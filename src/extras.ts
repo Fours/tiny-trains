@@ -23,11 +23,11 @@ function softDot() {
 // ---------- drifting motes of dust and pollen in the sunlight ----------
 
 function motes(root: THREE.Group) {
-  const n = 320
+  const n = 460
   const pos = new Float32Array(n * 3)
   const seed = new Float32Array(n)
   for (let i = 0; i < n; i++) {
-    pos.set([rr(-26, 26), rr(0.8, 13), rr(-19, 19)], i * 3)
+    pos.set([rr(-31, 31), rr(0.8, 14), rr(-24, 24)], i * 3)
     seed[i] = rand() * 100
   }
   const g = new THREE.BufferGeometry()
@@ -43,7 +43,7 @@ function motes(root: THREE.Group) {
       void main() {
         vec3 p = position;
         p.x += sin(uTime * 0.21 + aSeed) * 1.6 + uTime * 0.12;
-        p.x = mod(p.x + 26.0, 52.0) - 26.0;
+        p.x = mod(p.x + 31.0, 62.0) - 31.0;
         p.y += sin(uTime * 0.33 + aSeed * 1.7) * 0.7;
         p.z += cos(uTime * 0.17 + aSeed * 2.3) * 1.4;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -102,7 +102,7 @@ function balloon(root: THREE.Group) {
   tick.push((_, t) => {
     // a slow lap of the whole table, so it drifts through every view rather than parking in one
     const a = t * 0.06 + 3.6
-    g.position.set(Math.cos(a) * 25, 12 + Math.sin(t * 0.4) * 0.45, Math.sin(a) * 18.5)
+    g.position.set(Math.cos(a) * 30, 13 + Math.sin(t * 0.4) * 0.45, Math.sin(a) * 23.5)
     g.rotation.y = t * 0.08
     g.rotation.z = Math.sin(t * 0.5) * 0.03
   })
@@ -147,11 +147,11 @@ function bunting(root: THREE.Group, a: THREE.Vector3, b: THREE.Vector3, sag: num
 function glowPools(root: THREE.Group) {
   const m = new THREE.MeshBasicMaterial({ map: softDot(), color: 0xffb45a, transparent: true, opacity: 0.34, depthWrite: false, blending: THREE.AdditiveBlending })
   const spots: [number, number, number, number][] = [
-    [9.2, 1.4, 2.4, 0.03],
-    [12.0, -0.9, 2.4, 0.03],
-    [-10.9, 9.2, 2.2, 0.49],
-    [-3.5, 9.2, 2.2, 0.49],
-    [-10.6, -14.6, 2.6, 0.03],
+    [12.6, 3.6, 2.4, 0.03],
+    [16.0, 0.4, 2.4, 0.03],
+    [-14.0, 10.3, 2.2, 0.49],
+    [-4.6, 10.3, 2.2, 0.49],
+    [-11.2, -17.8, 2.6, 0.03],
   ]
   for (const [x, z, r, y] of spots) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), m)
@@ -210,8 +210,8 @@ function sparkles(root: THREE.Group) {
 // ---------- a kite flown from the front-left hill ----------
 
 function kite(root: THREE.Group) {
-  const hx = -18.2
-  const hz = 13.9
+  const hx = -23.2
+  const hz = 19.6
   const hy = groundY(hx, hz)
   const kid = frozen(grp(at(cyl(0.18, 0.27, 0.56, paint(0xf4b63a), 14), 0, 0.28, 0), at(sph(0.23, mat(0xf3c9a5, { rough: 0.6 }), 14, 10), 0, 0.72, 0), at(blob(0.25, 0.14, 0.25, paint(0xe8503f)), 0, 0.88, 0)))
   kid.position.set(hx, hy, hz)
@@ -275,13 +275,13 @@ function tableProps(root: THREE.Group) {
       ),
     })
   const blocks: [string, string, number, number, number, number][] = [
-    ['A', '#e8503f', -31.5, -17, 0.4, 0],
-    ['B', '#2f9e96', -34.2, -13.6, 1.1, 0],
-    ['C', '#f4b63a', -32.6, -15.4, 0.8, 1],
-    ['T', '#3f6fb5', 32, 15.5, 0.3, 0],
-    ['O', '#58a55c', 34.8, 12.4, -0.5, 0],
-    ['Y', '#8a5fc2', 29.5, -21.5, 0.9, 0],
-    ['S', '#e8503f', -29, 22.5, -0.3, 0],
+    ['A', '#e8503f', -37.5, -22, 0.4, 0],
+    ['B', '#2f9e96', -40.5, -18.4, 1.1, 0],
+    ['C', '#f4b63a', -38.8, -20.3, 0.8, 1],
+    ['T', '#3f6fb5', 38, 20.5, 0.3, 0],
+    ['O', '#58a55c', 41, 17, -0.5, 0],
+    ['Y', '#8a5fc2', 35.5, -27.5, 0.9, 0],
+    ['S', '#e8503f', -35, 28.5, -0.3, 0],
   ]
   const S = 3.0
   for (const [ch, bg, x, z, ry, level] of blocks) {
@@ -305,11 +305,11 @@ function tableProps(root: THREE.Group) {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(2.2, 40, 28), new THREE.MeshPhysicalMaterial({ map: ballTex, roughness: 0.3, clearcoat: 0.8, envMapIntensity: 0.9 }))
   ball.castShadow = ball.receiveShadow = true
   ball.userData.keep = true
-  root.add(at(ball, 33, TABLE_Y + 2.2, -12, 0.5, 0.4, 0.9))
+  root.add(at(ball, 39, TABLE_Y + 2.2, -15, 0.5, 0.4, 0.9))
   for (const [x, z, ry, c] of [
-    [-6, 25.5, 1.2, 0xe8503f],
-    [-3.4, 26.8, 1.75, 0x3f9bd6],
-    [10, -25, 0.3, 0x58a55c],
+    [-6, 31, 1.2, 0xe8503f],
+    [-3.4, 32.4, 1.75, 0x3f9bd6],
+    [10, -30.5, 0.3, 0x58a55c],
   ]) {
     const crayon = grp(at(cyl(0.34, 0.34, 5, paint(c), 12), 0, 0, 0, 0, 0, Math.PI / 2), at(cyl(0.02, 0.33, 0.8, paint(c), 12), -2.9, 0, 0, 0, 0, Math.PI / 2), at(cyl(0.35, 0.35, 1.6, mat(0xfff1d6, { rough: 0.8 }), 12), 0.6, 0, 0, 0, 0, Math.PI / 2))
     root.add(at(crayon, x, TABLE_Y + 0.34, z, 0, ry, 0))
@@ -319,9 +319,9 @@ function tableProps(root: THREE.Group) {
 export function buildExtras(root: THREE.Group) {
   motes(root)
   balloon(root)
-  bunting(root, new THREE.Vector3(9.2, 2.55, 1.4), new THREE.Vector3(12.0, 2.55, -0.9), 0.45, 9)
-  bunting(root, new THREE.Vector3(12.0, 2.55, -0.9), new THREE.Vector3(9.5, 2.5, -3.4), 0.4, 8)
-  bunting(root, new THREE.Vector3(-10.9, 3.0, 9.2), new THREE.Vector3(-3.5, 3.0, 9.2), 0.5, 16)
+  bunting(root, new THREE.Vector3(12.6, 2.55, 3.6), new THREE.Vector3(16.0, 2.55, 0.4), 0.45, 11)
+  bunting(root, new THREE.Vector3(16.0, 2.55, 0.4), new THREE.Vector3(13.6, 2.5, -2.4), 0.4, 8)
+  bunting(root, new THREE.Vector3(-14.0, 3.0, 10.3), new THREE.Vector3(-4.6, 3.0, 10.3), 0.5, 20)
   glowPools(root)
   sparkles(root)
   kite(root)

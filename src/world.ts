@@ -69,7 +69,7 @@ function paintGround() {
     g.fillRect(0, 0, w, h)
     // broad mottling
     const greens = ['#7dba48', '#4f9338', '#8cc650', '#43873a', '#6eae42', '#99c95a', '#559c43']
-    for (let i = 0; i < 2600; i++) {
+    for (let i = 0; i < 4000; i++) {
       const x = rand() * w
       const y = rand() * h
       const r = rr(0.5, 3.2) * PX
@@ -92,7 +92,8 @@ function paintGround() {
         g.strokeStyle = c
         g.lineWidth = lw * PX
         g.beginPath()
-        g.arc(X(t.cx), Z(t.cz), t.r * PX, 0, TAU)
+        t.outline().forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))))
+        g.closePath()
         g.stroke()
       }
     }
@@ -100,7 +101,7 @@ function paintGround() {
     for (const p of painters) p(g, X, Z)
     g.globalAlpha = 1
     // fine blade speckle
-    for (let i = 0; i < 90000; i++) {
+    for (let i = 0; i < 140000; i++) {
       const x = rand() * w
       const y = rand() * h
       g.fillStyle = rand() > 0.5 ? 'rgba(210,240,140,0.16)' : 'rgba(30,80,30,0.14)'
@@ -154,7 +155,7 @@ function slab(w: number, d: number, r: number, depth: number, bevel: number, top
 /** Call after all scenery has registered its ground paint. */
 export function buildGround(root: THREE.Group) {
   const { w, d } = BOARD
-  const R = 3.2
+  const R = 3.6
 
   // painted turf top
   const topGeo = new THREE.ShapeGeometry(roundedRect(w, d, R), 20)

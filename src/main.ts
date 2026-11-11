@@ -28,16 +28,16 @@ scene.environmentIntensity = 0.42
 
 // ---------- lights: a low warm sun with cool sky fill ----------
 const sun = new THREE.DirectionalLight(0xffc98f, 3.3)
-sun.position.set(-30, 25, 18)
+sun.position.set(-36, 30, 22)
 sun.castShadow = true
 sun.shadow.mapSize.set(4096, 4096)
 const sc = sun.shadow.camera
-sc.left = -36
-sc.right = 36
-sc.top = 30
-sc.bottom = -30
+sc.left = -44
+sc.right = 44
+sc.top = 36
+sc.bottom = -36
 sc.near = 5
-sc.far = 110
+sc.far = 130
 sun.shadow.bias = -0.0003
 sun.shadow.normalBias = 0.05
 sun.shadow.radius = 3.5
@@ -78,7 +78,7 @@ const target = new THREE.Vector3(0, 1.0, 0.5)
 
 function fitDistance() {
   const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
-  return Math.max(55 / (2 * t * camera.aspect), 33 / (2 * t))
+  return Math.max(66 / (2 * t * camera.aspect), 41 / (2 * t))
 }
 
 window.addEventListener('keydown', (e) => {
@@ -132,7 +132,9 @@ renderer.setAnimationLoop((now) => {
   const k = 1 - Math.exp(-dt * 3.2)
   rig.az += (Math.PI / 4 + (rig.side * Math.PI) / 2 + Math.sin(time * 0.17) * 0.035 - rig.az) * k
   rig.el += (ELEV[rig.tilt] + Math.sin(time * 0.23) * 0.012 - rig.el) * k
-  rig.dist += (fitDistance() * rig.zoom - rig.dist) * k
+  // a zero-sized window (hidden tab at load) would otherwise poison the eased distance with NaN
+  const want = fitDistance() * rig.zoom
+  if (Number.isFinite(want)) rig.dist = Number.isFinite(rig.dist) ? rig.dist + (want - rig.dist) * k : want
   camera.position.set(
     target.x + Math.sin(rig.az) * Math.cos(rig.el) * rig.dist,
     target.y + Math.sin(rig.el) * rig.dist,

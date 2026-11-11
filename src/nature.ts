@@ -1,16 +1,17 @@
 import * as THREE from 'three'
-import { BOARD, BRIDGE_HALF, CROSSING, angDiff, block, free, onBoard, trackB } from './tracks.ts'
+import { BOARD, BRIDGE_HALF, CROSSING, block, free, onBoard, trackB } from './tracks.ts'
 import { at, blob, cyl, dyn, grp, mat, mesh, lumpy, mulberry, pick, rand, rr, sph, tick, turfMat, TAU } from './util.ts'
 import { groundPatch } from './world.ts'
 
 // ---------- hills ----------
 
 const hills = [
-  { x: 18.6, z: -12.4, r: 4.6, h: 2.3 },
-  { x: -19.2, z: -12.7, r: 4.1, h: 1.9 },
-  { x: -19.3, z: 12.8, r: 4.0, h: 1.4 },
-  { x: -0.3, z: -14.3, r: 2.7, h: 1.3 },
-  { x: 20.6, z: 1.5, r: 2.6, h: 0.9 },
+  { x: -22, z: -15.5, r: 5.6, h: 2.5 },
+  { x: 14, z: -12.5, r: 3.6, h: 2.0 },
+  { x: 24.6, z: -17.2, r: 3.9, h: 2.0 },
+  { x: 25, z: 17.2, r: 3.5, h: 1.6 },
+  { x: -24.4, z: 18.2, r: 3.9, h: 1.4 },
+  { x: -7.5, z: -19, r: 3.0, h: 1.2 },
 ]
 
 export function groundY(x: number, z: number) {
@@ -22,7 +23,7 @@ export function groundY(x: number, z: number) {
   return y
 }
 
-export const POND = { x: 8.7, z: 3.7, rx: 2.4, rz: 1.85 }
+export const POND = { x: 13.6, z: 13.4, rx: 2.7, rz: 2.0 }
 
 // ---------- wind-swayed foliage material ----------
 
@@ -307,55 +308,67 @@ export function buildNature(root: THREE.Group) {
 
   // ----- hero trees (hand placed) -----
   const heroes: [number, number, number, number?][] = [
-    [-19.4, 12.9, 1.75, 0x5fb347],
-    [-21.2, -2.5, 1.35],
-    [21.2, 6.2, 1.3, special[0]],
-    [-1.6, 15.4, 1.25, special[1]],
-    [16.6, 14.6, 1.1],
-    [-15.9, -9.6, 1.3],
-    [10.9, 6.5, 1.05, special[3]],
-    [-14.6, 14.6, 1.2, special[2]],
-    [6.9, -14.6, 1.25],
-    [21.0, -5.2, 1.2],
-    [15.6, -0.2, 0.95, 0x8cc84f],
-    [-16.6, 0.9, 0.95],
+    [-25.2, 17.2, 1.6, 0x5fb347],
+    [-6.3, -8.2, 1.0],
+    [22.6, -5.4, 1.25, special[0]],
+    [17.8, 12.4, 1.05, special[3]],
+    [10.2, -9.8, 1.1],
+    [-23.4, -8.8, 1.3],
+    [-17.0, -9.6, 1.1, special[2]],
+    [-12.4, 2.6, 0.95],
+    [-10.5, 16.8, 1.15, special[1]],
+    [-4.6, 17.2, 0.95],
+    [10.2, 16.6, 1.0],
+    [11.0, -15.2, 1.0],
+    [22.4, 1.6, 0.95, 0x8cc84f],
   ]
   for (const [x, z, s, c] of heroes) roundTree(x, z, s, c)
   // firs in the lens between the two loops and on the hills
   for (const [x, z, s] of [
-    [2.2, 1.4, 0.95],
-    [1.7, 3.2, 0.75],
-    [2.4, -0.6, 0.8],
-    [-19.4, -12.9, 1.5],
-    [-21.4, -10.6, 1.1],
-    [-17.2, -14.6, 1.2],
-    [-20.9, -15.0, 1.0],
-    [21.0, -10.2, 1.2],
-    [15.8, -14.9, 1.25],
-    [21.4, -14.4, 1.05],
-    [-0.4, -14.5, 1.25],
-    [1.2, -15.6, 0.9],
-    [-2.2, -15.4, 0.95],
-    [11.6, -14.2, 1.1],
-    [20.9, 1.6, 1.15],
+    [4.5, -3.6, 0.8],
+    [4.6, -6.6, 0.7],
+    [3.0, 3.4, 0.75],
+    [-22, -15.8, 1.5],
+    [-24.6, -13.4, 1.1],
+    [-19.6, -17.6, 1.2],
+    [-24.4, -18.4, 1.0],
+    [-20.2, -12.6, 1.0],
+    [-7.6, -19.2, 1.2],
+    [-5.8, -20.5, 0.9],
+    [-9.5, -20.3, 0.9],
+    [24.6, -17.4, 1.3],
+    [27.0, -15.2, 1.0],
+    [22.6, -19.6, 1.0],
+    [27.0, -19.4, 0.9],
+    [25.2, 17.4, 1.25],
+    [27.2, 15.2, 0.95],
+    [23.4, 19.6, 1.0],
+    [27.0, 19.8, 0.9],
   ]) {
     pine(x, z, s)
   }
   // birches
   for (const [x, z] of [
-    [21.6, 9.0],
-    [20.4, -2.2],
-    [-21.8, 5.6],
-    [6.4, 15.6],
-    [-11.6, 15.4],
+    [27.7, -1.0],
+    [-27.6, -9.0],
+    [2.6, 21.4],
+    [-27.4, 12.6],
+    [16.6, 17.0],
+    [23.2, 13.4],
   ]) {
     roundTree(x, z, 0.85, 0x9bd45a, true)
   }
 
   // keep sight lines to the crossing and paths open
   block(CROSSING.x, CROSSING.z, 3.6)
-  block(-9.4, 0.2, 1.0)
-  block(-8.2, 3.6, 0.6)
+  for (const [x, z] of [
+    [-15, 3.4],
+    [-11.5, 5.0],
+    [13.9, 6.5],
+    [13.7, 9.5],
+    [-11, 20.2],
+  ])
+    block(x, z, 0.8)
 
   // ----- scatter -----
   const scatter = (count: number, r: number, fn: (x: number, z: number) => void, tries = 40) => {
@@ -368,17 +381,17 @@ export function buildNature(root: THREE.Group) {
       made++
     }
   }
-  scatter(16, 1.0, (x, z) => roundTree(x, z, rr(0.7, 1.0), rand() < 0.14 ? pick(special) : pick(greens)))
-  scatter(18, 0.8, (x, z) => pine(x, z, rr(0.65, 1.0)))
-  scatter(70, 0.45, (x, z) => bush(x, z, rr(0.6, 1.05)))
-  scatter(46, 0.3, (x, z) => rock(x, z, rr(0.18, 0.42)))
+  scatter(26, 1.0, (x, z) => roundTree(x, z, rr(0.7, 1.0), rand() < 0.14 ? pick(special) : pick(greens)))
+  scatter(28, 0.8, (x, z) => pine(x, z, rr(0.65, 1.0)))
+  scatter(110, 0.45, (x, z) => bush(x, z, rr(0.6, 1.05)))
+  scatter(70, 0.3, (x, z) => rock(x, z, rr(0.18, 0.42)))
   // rocks ringing the pond
   for (let i = 0; i < 20; i++) {
     const a = (i / 20) * TAU + rr(-0.1, 0.1)
     rock(POND.x + Math.cos(a) * (POND.rx + 0.2), POND.z + Math.sin(a) * (POND.rz + 0.2), rr(0.2, 0.38))
   }
   // flower drifts
-  scatter(64, 0.35, (x, z) => {
+  scatter(100, 0.35, (x, z) => {
     const col = pick([0xff6f91, 0xffc94d, 0xffffff, 0xff8f5a, 0xc38cff, 0xff5a5a, 0x7fb8ff])
     const n = 4 + Math.floor(rand() * 6)
     for (let i = 0; i < n; i++) {
@@ -389,7 +402,7 @@ export function buildNature(root: THREE.Group) {
   })
   // grass tufts: unblocked, so they crowd right up against everything
   const grassCols = [0x62ad3f, 0x529c3b, 0x78bd47, 0x478f3e, 0x8cc850]
-  for (let i = 0, made = 0; i < 40000 && made < 5200; i++) {
+  for (let i = 0, made = 0; i < 60000 && made < 8000; i++) {
     const x = rr(-BOARD.w / 2, BOARD.w / 2)
     const z = rr(-BOARD.d / 2, BOARD.d / 2)
     if (!onBoard(x, z, 0.35) || !free(x, z, -0.25)) continue
@@ -398,14 +411,16 @@ export function buildNature(root: THREE.Group) {
     made++
   }
   // tufts and flowers climbing the embankment slopes
-  for (let i = 0, made = 0; i < 9000 && made < 1100; i++) {
-    const a = rand() * TAU
-    const h = trackB.heightAtAngle(a)
-    if (h < 0.06 || Math.abs(angDiff(a, trackB.bridgeAngle!)) < BRIDGE_HALF + 0.03) continue
+  for (let i = 0, made = 0; i < 12000 && made < 1400; i++) {
+    const sb = rand() * trackB.length
+    const h = trackB.height(sb)
+    const L = trackB.length
+    if (h < 0.06 || Math.abs(((sb - trackB.bridgeS! + L * 1.5) % L) - L / 2) < BRIDGE_HALF + 0.3) continue
     const u = rr(0.08, 1)
     const lat = (rand() < 0.5 ? -1 : 1) * (1.38 + u * h * 0.75)
-    const x = trackB.cx + Math.cos(a) * (trackB.r + lat)
-    const z = trackB.cz + Math.sin(a) * (trackB.r + lat)
+    const f = trackB.frame(sb)
+    const x = f.x + f.nx * lat
+    const z = f.z + f.nz * lat
     const s = rr(0.5, 1.0)
     grass.add(x, h * (1 - u) - 0.03, z, s, s * rr(0.7, 1.2), s, jitter(pick(grassCols), 0.015, 0.05, 0.04), 0, rand() * TAU, 0)
     if (made % 14 === 0) {
@@ -418,11 +433,11 @@ export function buildNature(root: THREE.Group) {
   for (let i = 0; i < 520; i++) {
     const a = rand() * TAU
     const d = Math.sqrt(rand())
-    const x = -6.0 + Math.cos(a) * d * 2.3
-    const z = -7.4 + Math.sin(a) * d * 1.55
+    const x = -6.6 + Math.cos(a) * d * 2.3
+    const z = 0.4 + Math.sin(a) * d * 1.55
     grass.add(x, 0, z, 0.8, rr(1.5, 1.9), 0.8, jitter(0xe6c04f, 0.01, 0.05, 0.05), 0, rand() * TAU, 0)
   }
-  block(-6.0, -7.4, 2.3)
+  block(-6.6, 0.4, 2.3)
 
   leaves.build(root)
   cones.build(root)
@@ -457,7 +472,7 @@ export function buildNature(root: THREE.Group) {
   const cap = mat(0xe8483f, { rough: 0.45 })
   const spot = mat(0xffffff, { rough: 0.6 })
   const stalk = mat(0xfff3e0, { rough: 0.8 })
-  scatter(22, 0.25, (x, z) => {
+  scatter(34, 0.25, (x, z) => {
     const s = rr(0.7, 1.3)
     const y = groundY(x, z)
     const g = grp(at(cyl(0.07 * s, 0.09 * s, 0.24 * s, stalk, 8), 0, 0.12 * s, 0), at(blob(0.22 * s, 0.15 * s, 0.22 * s, cap), 0, 0.26 * s, 0))
@@ -468,28 +483,28 @@ export function buildNature(root: THREE.Group) {
   const petal = mat(0xffcc33, { rough: 0.6 })
   const seed = mat(0x6b4226, { rough: 0.9 })
   for (const [x, z] of [
-    [16.7, 10.2],
-    [17.3, 9.7],
-    [16.2, 11.0],
-    [21.4, 10.4],
-    [21.9, 11.2],
-    [17.0, 13.9],
+    [-18.2, 17.2],
+    [-17.6, 16.6],
+    [-18.7, 18.2],
+    [-12.9, 17.0],
+    [-12.6, 17.8],
+    [-13.4, 20.7],
   ]) {
     const h = rr(1.3, 1.9)
     const g = grp(at(cyl(0.04, 0.05, h, stemMat, 6), 0, h / 2, 0), at(blob(0.2, 0.06, 0.12, stemMat), 0.16, h * 0.5, 0, 0, 0, 0.5))
     const head = grp(at(cyl(0.17, 0.17, 0.07, seed, 12), 0, 0, 0, Math.PI / 2))
     for (let i = 0; i < 12; i++) head.add(at(blob(0.14, 0.05, 0.03, petal), Math.cos((i / 12) * TAU) * 0.24, Math.sin((i / 12) * TAU) * 0.24, 0, 0, 0, (i / 12) * TAU))
     g.add(at(head, 0, h, 0.04, -0.35, 0, 0))
-    root.add(at(g, x, 0, z, 0, rr(-0.6, 0.6) + 3.6, 0))
+    root.add(at(g, x, 0, z, 0, rr(-0.6, 0.6) + 0.6, 0))
   }
   const pumpkin = mat(0xf08a2c, { rough: 0.55 })
   for (const [x, z, s] of [
-    [-10.2, -5.0, 0.3],
-    [-9.7, -4.6, 0.22],
-    [-10.6, -4.5, 0.25],
-    [-3.6, -8.0, 0.26],
-    [-3.2, -7.5, 0.2],
-    [20.6, 13.6, 0.24],
+    [-17.6, -1.2, 0.3],
+    [-17.1, -0.7, 0.22],
+    [-18.1, -0.6, 0.25],
+    [-9.3, 2.0, 0.26],
+    [-8.8, 2.5, 0.2],
+    [-13.2, 20.0, 0.24],
   ]) {
     root.add(at(grp(at(blob(s, s * 0.74, s, pumpkin), 0, s * 0.7, 0), at(cyl(0.03, 0.04, 0.12, stemMat, 5), 0, s * 1.45, 0)), x, 0, z))
   }
@@ -507,13 +522,13 @@ export function buildNature(root: THREE.Group) {
       s.castShadow = true
       c.add(s)
     }
-    const z0 = -13 + i * 11 + rr(-1, 1)
+    const z0 = -15 + i * 14 + rr(-1, 1)
     const y0 = 8.5 + rr(0, 1.5)
     const sp = rr(0.35, 0.6)
-    const off = rand() * 70
+    const off = rand() * 86
     tick.push((_, t) => {
-      const u = ((t * sp + off) % 70) / 70
-      c.position.set(-35 + u * 70, y0 + Math.sin(t * 0.5 + i) * 0.25, z0)
+      const u = ((t * sp + off) % 86) / 86
+      c.position.set(-43 + u * 86, y0 + Math.sin(t * 0.5 + i) * 0.25, z0)
       const edge = Math.min(1, Math.min(u, 1 - u) * 8)
       c.scale.setScalar(0.001 + edge)
     })

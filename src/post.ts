@@ -197,7 +197,7 @@ export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
   gtao.blendIntensity = 0.95
   composer.addPass(gtao)
 
-  const bokeh = new TiltShiftPass(gtao.depthTexture, camera, { dead: 9, range: 42, radius: 22 })
+  const bokeh = new TiltShiftPass(gtao.depthTexture, camera, { dead: 11, range: 50, radius: 22 })
   composer.addPass(bokeh)
 
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.38, 0.7, 1.7)

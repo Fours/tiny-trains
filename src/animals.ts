@@ -267,42 +267,46 @@ export function buildAnimals(root: THREE.Group) {
     root.add(g)
   }
   // pasture
-  put(cow(), -13.4, 3.3, 0.9, 1.1)
-  put(cow(0x8a5a3c), -10.3, 5.0, -2.3, 1.05)
-  put(cow(), -11.7, 2.4, 2.6, 0.62)
-  put(sheep(), -9.3, 3.1, -0.8, 1)
-  put(sheep(), -13.9, 5.3, 2.0, 0.95)
-  put(sheep(0x3d3838, 0x4a4444), -18.4, 11.2, 1.2, 1)
-  put(sheep(), -17.2, 12.6, 0.2, 0.8)
+  put(cow(), -18.8, 6.8, 0.9, 1.1)
+  put(cow(0x8a5a3c), -15.2, 8.5, -2.3, 1.05)
+  put(cow(), -17.0, 5.7, 2.6, 0.62)
+  put(sheep(), -14.6, 6.3, -0.8, 1)
+  put(sheep(), -19.8, 8.8, 2.0, 0.95)
+  put(sheep(0x3d3838, 0x4a4444), -22.4, 16.2, 1.2, 1)
+  put(sheep(), -21.2, 18.0, 0.2, 0.8)
+  put(sheep(), 22.8, -2.2, -1.0, 0.9)
   // pen
-  put(pig(), -7.4, -2.7, 0.6, 1)
-  put(pig(), -6.3, -2.1, -2.2, 0.8)
+  put(pig(), -11.7, -1.4, 0.6, 1)
+  put(pig(), -10.6, -0.8, -2.2, 0.8)
   // yard
-  for (let i = 0; i < 4; i++) root.add(chicken(-10.6 + rr(-0.5, 0.5), -1.2 + rr(-0.4, 0.4), i === 3 ? 0xc9824a : 0xfffaf0))
+  for (let i = 0; i < 5; i++) root.add(chicken(-16.6 + rr(-0.5, 0.5), 0.2 + rr(-0.4, 0.4), i === 3 ? 0xc9824a : 0xfffaf0))
   // pond family
   root.add(duck(0xffffff, 1.1, 0))
   for (let i = 1; i <= 3; i++) root.add(duck(0xffe066, 0.55, 0.28 + i * 0.2))
   // bunnies
-  root.add(bunny(21.0, 4.4), bunny(-3.6, 14.9, 0xcdb59a), bunny(9.6, 14.6), bunny(-21.3, 8.6, 0xffffff))
-  // dog in the square, fox by the camp, deer on the hill
-  put(dog(0xc98c55, 0xfff3e0), 11.4, -1.6, -0.6, 1.05)
-  put(dog(0xe8762c, 0xfff3e0, true), -14.6, -12.6, 1.9, 1)
-  put(deer(), -18.4, -11.2, 1.1, 1.05)
-  put(deer(), 16.2, -10.8, -0.7, 0.8)
+  root.add(bunny(22.2, 0.4), bunny(-7.4, 18.2, 0xcdb59a), bunny(11.2, 16.6), bunny(-2.6, 19.6, 0xffffff), bunny(-20.6, -9.6))
+  // dog in the square, fox by the camp, deer on the hills
+  put(dog(0xc98c55, 0xfff3e0), 15.3, -0.1, -0.6, 1.05)
+  put(dog(0xe8762c, 0xfff3e0, true), -15.0, -16.2, 1.9, 1)
+  put(deer(), -21.0, -13.4, 1.1, 1.05)
+  put(deer(), 25.8, -15.2, -0.7, 0.8)
+  put(deer(), 24.0, 15.6, 2.4, 0.9)
 
   // birds wheeling overhead, butterflies over the flowers
   const birdCols = [0x4f8fd6, 0xe8574a, 0xf2c14e, 0x4f8fd6, 0xffffff]
-  birdCols.forEach((c, i) => flyer(root, c, 11 + i * 1.6, 8.2 + i * 0.5, (0.32 + i * 0.03) * (i % 2 ? -1 : 1), i * 1.9, false, 0, -1))
+  birdCols.forEach((c, i) => flyer(root, c, 13 + i * 2, 8.6 + i * 0.5, (0.32 + i * 0.03) * (i % 2 ? -1 : 1), i * 1.9, false, 0, -1))
   const flut = [0xffb3d1, 0xfff07a, 0x9ad0ff, 0xffa64d, 0xffffff, 0xd9a6ff]
   const spots: [number, number][] = [
-    [-11.6, 3.9],
-    [10.7, 0.3],
-    [19.0, 9.8],
-    [-7.2, 14.6],
-    [2.5, 13.6],
-    [-18.6, 12.2],
-    [8.7, 3.7],
-    [-3.0, -8.2],
+    [-17.2, 7.4],
+    [14.2, 2.0],
+    [-15.5, 17.4],
+    [-9.2, 16.2],
+    [3.6, 5.0],
+    [-24.2, 17.6],
+    [13.6, 13.4],
+    [-6.6, 0.4],
+    [22.4, -3.0],
+    [-12, -17.6],
   ]
   spots.forEach(([x, z], i) => flyer(root, flut[i % flut.length], rr(1.2, 2.4), rr(0.9, 1.9), rr(0.5, 0.9), rand() * 10, true, x, z))
 }

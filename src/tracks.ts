@@ -1,87 +1,216 @@
 import * as THREE from 'three'
-import { at, box, cyl, grp, mat, mesh, mod, tex, TAU, rr, turfMat } from './util.ts'
+import { at, box, cyl, grp, mat, mesh, mod, tex, rr, turfMat } from './util.ts'
 
 // ---------- layout ----------
-// Two circular loops that meet at right angles. They intersect twice: the
-// front intersection is a level "diamond" crossing with signals, the back one
-// is grade separated (track B climbs an embankment and bridges over track A).
+// Two loops built from straights joined by curves of different radii. They
+// cross twice along track B's long western straight: the front crossing is a
+// level "diamond" with signals, the back one is grade separated (B climbs an
+// embankment and bridges over A).
 
-export const BOARD = { w: 48, d: 35 }
+export const BOARD = { w: 58, d: 45 }
 export const RAIL_Y = 0.36 // rail-top height above the track base
 const GAUGE = 1.1
 const BRIDGE_H = 3.6
-const RAMP = (97 * Math.PI) / 180
+const RAMP = 17.5 // length of each approach ramp
 const PLATEAU = 0.1
-export const BRIDGE_HALF = (25 * Math.PI) / 180
+export const BRIDGE_HALF = 4.4 // half-length of the bridge deck
 
-const angDiff = (a: number, b: number) => {
-  const d = mod(a - b + Math.PI, TAU) - Math.PI
-  return d
+export const CROSSING = new THREE.Vector3(0, 0, 13)
+export const UNDERPASS = new THREE.Vector3(0, 0, -12)
+
+export interface Frame {
+  x: number
+  y: number
+  z: number
+  /** unit heading */
+  tx: number
+  tz: number
+  /** unit normal pointing out of the loop */
+  nx: number
+  nz: number
+  /** rotation.y that points an object's +z along the heading (and its +x outward) */
+  yaw: number
 }
+
+const DS = 0.1
 
 export class Track {
   readonly length: number
   /** arc position of the level crossing */
   crossS = 0
-  bridgeAngle: number | null = null
-  readonly cx: number
-  readonly cz: number
-  readonly r: number
+  /** arc position of the bridge summit, if this track has one */
+  bridgeS: number | null = null
+  private xs: Float32Array
+  private zs: Float32Array
+  private n: number
 
-  constructor(cx: number, cz: number, r: number) {
-    this.cx = cx
-    this.cz = cz
-    this.r = r
-    this.length = TAU * r
+  /** `corners` are [x, z, radius] in travel order; each corner is rounded with a tangent arc. */
+  constructor(corners: [number, number, number][]) {
+    // 1. straights + fillet arcs as a dense polyline
+    let pts: [number, number][] = []
+    const m = corners.length
+    for (let i = 0; i < m; i++) {
+      const [px, pz] = corners[(i + m - 1) % m]
+      const [cx, cz, r] = corners[i]
+      const [qx, qz] = corners[(i + 1) % m]
+      const l1 = Math.hypot(cx - px, cz - pz)
+      const l2 = Math.hypot(qx - cx, qz - cz)
+      const d1x = (cx - px) / l1
+      const d1z = (cz - pz) / l1
+      const d2x = (qx - cx) / l2
+      const d2z = (qz - cz) / l2
+      const turn = Math.sign(d1x * d2z - d1z * d2x)
+      const theta = Math.acos(Math.min(1, Math.max(-1, d1x * d2x + d1z * d2z)))
+      const t = r * Math.tan(theta / 2)
+      const sx = cx - d1x * t
+      const sz = cz - d1z * t
+      const ox = sx - d1z * r * turn
+      const oz = sz + d1x * r * turn
+      const a0 = Math.atan2(sz - oz, sx - ox)
+      const steps = Math.max(2, Math.ceil((r * theta) / 0.05))
+      for (let k = 0; k <= steps; k++) {
+        const a = a0 + (turn * theta * k) / steps
+        pts.push([ox + Math.cos(a) * r, oz + Math.sin(a) * r])
+      }
+    }
+    // 2. uniform resample, soften the straight-to-curve joints, resample again
+    pts = Track.resample(pts)
+    for (let it = 0; it < 50; it++) {
+      const next: [number, number][] = pts.map((_, i) => {
+        const a = pts[(i + pts.length - 1) % pts.length]
+        const b = pts[i]
+        const c = pts[(i + 1) % pts.length]
+        return [(a[0] + 2 * b[0] + c[0]) / 4, (a[1] + 2 * b[1] + c[1]) / 4]
+      })
+      pts = next
+    }
+    pts = Track.resample(pts)
+    this.n = pts.length
+    this.xs = new Float32Array(pts.map((p) => p[0]))
+    this.zs = new Float32Array(pts.map((p) => p[1]))
+    let len = 0
+    for (let i = 0; i < this.n; i++) {
+      const j = (i + 1) % this.n
+      len += Math.hypot(this.xs[j] - this.xs[i], this.zs[j] - this.zs[i])
+    }
+    this.length = len
   }
 
-  angle(s: number) {
-    return s / this.r
+  private static resample(pts: [number, number][]): [number, number][] {
+    const cum = [0]
+    for (let i = 0; i < pts.length; i++) {
+      const q = pts[(i + 1) % pts.length]
+      cum.push(cum[i] + Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]))
+    }
+    const total = cum[pts.length]
+    const n = Math.round(total / DS)
+    const out: [number, number][] = []
+    let k = 0
+    for (let i = 0; i < n; i++) {
+      const s = (i / n) * total
+      while (cum[k + 1] < s) k++
+      const seg = cum[k + 1] - cum[k]
+      const u = seg > 1e-9 ? (s - cum[k]) / seg : 0
+      const a = pts[k]
+      const b = pts[(k + 1) % pts.length]
+      out.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u])
+    }
+    return out
   }
 
-  heightAtAngle(a: number) {
-    if (this.bridgeAngle === null) return 0
-    const u = Math.abs(angDiff(a, this.bridgeAngle)) / RAMP
+  private xz(s: number): [number, number] {
+    const f = (mod(s, this.length) / this.length) * this.n
+    const i = Math.floor(f) % this.n
+    const j = (i + 1) % this.n
+    const u = f - Math.floor(f)
+    return [this.xs[i] + (this.xs[j] - this.xs[i]) * u, this.zs[i] + (this.zs[j] - this.zs[i]) * u]
+  }
+
+  height(s: number) {
+    if (this.bridgeS === null) return 0
+    const L = this.length
+    const u = Math.abs(mod(s - this.bridgeS + L / 2, L) - L / 2) / RAMP
     if (u >= 1) return 0
     if (u <= PLATEAU) return BRIDGE_H
     return BRIDGE_H * 0.5 * (1 + Math.cos((Math.PI * (u - PLATEAU)) / (1 - PLATEAU)))
   }
 
   pos(s: number, out = new THREE.Vector3()) {
-    const a = this.angle(s)
-    return out.set(this.cx + this.r * Math.cos(a), this.heightAtAngle(a), this.cz + this.r * Math.sin(a))
+    const [x, z] = this.xz(s)
+    return out.set(x, this.height(s), z)
   }
 
-  /** horizontal distance from the track centre line */
-  dist(x: number, z: number) {
-    return Math.abs(Math.hypot(x - this.cx, z - this.cz) - this.r)
+  frame(s: number): Frame {
+    const [x, z] = this.xz(s)
+    const [ax, az] = this.xz(s - 0.2)
+    const [bx, bz] = this.xz(s + 0.2)
+    const l = Math.hypot(bx - ax, bz - az)
+    const tx = (bx - ax) / l
+    const tz = (bz - az) / l
+    return { x, y: this.height(s), z, tx, tz, nx: tz, nz: -tx, yaw: Math.atan2(tx, tz) }
   }
 
-  heightAtPoint(x: number, z: number) {
-    return this.heightAtAngle(Math.atan2(z - this.cz, x - this.cx))
+  /** closest point on the centre line */
+  nearest(x: number, z: number) {
+    let best = 0
+    let bd = Infinity
+    for (let i = 0; i < this.n; i += 4) {
+      const d = (this.xs[i] - x) ** 2 + (this.zs[i] - z) ** 2
+      if (d < bd) {
+        bd = d
+        best = i
+      }
+    }
+    for (let k = -4; k <= 4; k++) {
+      const i = (best + k + this.n) % this.n
+      const d = (this.xs[i] - x) ** 2 + (this.zs[i] - z) ** 2
+      if (d < bd) {
+        bd = d
+        best = i
+      }
+    }
+    return { d: Math.sqrt(bd), s: (best / this.n) * this.length }
+  }
+
+  /** centre line as [x, z] points, for painting */
+  outline(step = 5) {
+    const out: [number, number][] = []
+    for (let i = 0; i < this.n; i += step) out.push([this.xs[i], this.zs[i]])
+    return out
   }
 }
 
-export const trackA = new Track(-7.2, 0, 12)
-export const trackB = new Track(8.42, 0, 10)
-
-// intersection points of the two circles
-const ix = 2.02
-const iz = Math.sqrt(trackA.r ** 2 - (ix - trackA.cx) ** 2)
-export const CROSSING = new THREE.Vector3(ix, 0, iz)
-export const UNDERPASS = new THREE.Vector3(ix, 0, -iz)
-trackA.crossS = mod(Math.atan2(iz, ix - trackA.cx), TAU) * trackA.r
-trackB.crossS = mod(Math.atan2(iz, ix - trackB.cx), TAU) * trackB.r
-trackB.bridgeAngle = Math.atan2(-iz, ix - trackB.cx)
+// travel order; the third number is the corner radius
+export const trackA = new Track([
+  [7, 13, 5],
+  [-25.5, 13, 6],
+  [-25.5, -5, 5],
+  [-13.5, -5, 6],
+  [-8, -12, 5],
+  [7, -12, 5],
+])
+export const trackB = new Track([
+  [0, 19.5, 5],
+  [0, -18.5, 5],
+  [14, -18.5, 5],
+  [25.5, -9.5, 6],
+  [25.5, 3, 5],
+  [20, 10, 5],
+  [20, 19.5, 4.5],
+])
+trackA.crossS = trackA.nearest(CROSSING.x, CROSSING.z).s
+trackB.crossS = trackB.nearest(CROSSING.x, CROSSING.z).s
+trackB.bridgeS = trackB.nearest(UNDERPASS.x, UNDERPASS.z).s
 
 const EMB_SLOPE = 0.75
 const EMB_TOP = 1.35
 
 /** Is (x,z) clear of rails, ballast and the embankment by `margin`? */
 export function clearOfTracks(x: number, z: number, margin = 0) {
-  if (trackA.dist(x, z) < 1.35 + margin) return false
-  const h = trackB.heightAtPoint(x, z)
-  if (trackB.dist(x, z) < 1.35 + h * EMB_SLOPE + (h > 0.05 ? 0.25 : 0) + margin) return false
+  if (trackA.nearest(x, z).d < 1.35 + margin) return false
+  const nb = trackB.nearest(x, z)
+  const h = trackB.height(nb.s)
+  if (nb.d < 1.35 + h * EMB_SLOPE + (h > 0.05 ? 0.25 : 0) + margin) return false
   return true
 }
 
@@ -89,20 +218,16 @@ export function clearOfTracks(x: number, z: number, margin = 0) {
 
 export type Profile = [number, number][]
 
-/** Sweep a cross-section polyline (lateral x, up y) along a track. Flat-shaded strips. */
+/** Sweep a cross-section polyline (outward x, up y) along a track. Flat-shaded strips. */
 export function sweep(track: Track, s0: number, s1: number, step: number, profile: (s: number) => Profile, closed = false) {
   const n = Math.max(2, Math.ceil((s1 - s0) / step))
   const pos: number[] = []
   const uv: number[] = []
-  const p = new THREE.Vector3()
   const rings: THREE.Vector3[][] = []
   const lens: number[][] = []
   for (let i = 0; i <= n; i++) {
     const s = s0 + ((s1 - s0) * i) / n
-    track.pos(s, p)
-    const a = track.angle(s)
-    const lx = Math.cos(a)
-    const lz = Math.sin(a) // lateral = radial outward
+    const f = track.frame(s)
     const prof = profile(s)
     const ring: THREE.Vector3[] = []
     const ll: number[] = []
@@ -110,7 +235,7 @@ export function sweep(track: Track, s0: number, s1: number, step: number, profil
     prof.forEach(([x, y], k) => {
       if (k > 0) acc += Math.hypot(x - prof[k - 1][0], y - prof[k - 1][1])
       ll.push(acc)
-      ring.push(new THREE.Vector3(p.x + lx * x, p.y + y, p.z + lz * x))
+      ring.push(new THREE.Vector3(f.x + f.nx * x, f.y + y, f.z + f.nz * x))
     })
     rings.push(ring)
     lens.push(ll)
@@ -127,7 +252,7 @@ export function sweep(track: Track, s0: number, s1: number, step: number, profil
       const d = rings[i + 1][k]
       const ua = lens[i][k]
       const ub = k2 === 0 ? lens[i][k] + 0.2 : lens[i][k2]
-      // winding chosen so that a left-to-right profile faces up
+      // winding chosen so that an inside-to-outside profile faces up
       pos.push(a.x, a.y, a.z, d.x, d.y, d.z, b.x, b.y, b.z, b.x, b.y, b.z, d.x, d.y, d.z, c.x, c.y, c.z)
       uv.push(ua, v0, ua, v1, ub, v0, ub, v0, ua, v1, ub, v1)
     }
@@ -164,7 +289,7 @@ export function buildTracks(root: THREE.Group) {
 
   for (const t of [trackA, trackB]) {
     const L = t.length
-    const onBridge = (s: number) => t.bridgeAngle !== null && Math.abs(angDiff(t.angle(s), t.bridgeAngle)) < BRIDGE_HALF
+    const onBridge = (s: number) => t.bridgeS !== null && Math.abs(mod(s - t.bridgeS + L / 2, L) - L / 2) < BRIDGE_HALF
 
     // ballast (skipped on the bridge deck)
     const ballastProfile = (): Profile => [
@@ -173,12 +298,12 @@ export function buildTracks(root: THREE.Group) {
       [0.95, 0.16],
       [1.22, 0],
     ]
-    if (t.bridgeAngle === null) {
+    if (t.bridgeS === null) {
       root.add(mesh(sweep(t, 0, L, 0.3, ballastProfile), ballastMat))
     } else {
-      const sb = mod(t.bridgeAngle, TAU) * t.r
-      const half = BRIDGE_HALF * t.r
-      const ramp = RAMP * t.r
+      const sb = t.bridgeS
+      const half = BRIDGE_HALF
+      const ramp = RAMP
       root.add(mesh(sweep(t, sb + half, sb - half + L, 0.3, ballastProfile), ballastMat))
 
       // grassy embankment either side of the bridge
@@ -203,21 +328,20 @@ export function buildTracks(root: THREE.Group) {
         const posts = 13
         for (let i = 0; i <= posts; i++) {
           const s = sb - half - 0.2 + ((2 * half + 0.4) * i) / posts
-          t.pos(s, p)
-          const a = t.angle(s)
+          const f = t.frame(s)
+          const x1 = f.x + f.nx * side * 1.48
+          const z1 = f.z + f.nz * side * 1.48
           const post = box(0.14, 0.95, 0.14, girderMat, 0.03)
-          post.position.set(p.x + Math.cos(a) * side * 1.48, p.y + 0.2, p.z + Math.sin(a) * side * 1.48)
-          post.rotation.y = -a
+          post.position.set(x1, f.y + 0.2, z1)
+          post.rotation.y = f.yaw
           root.add(post)
           if (i < posts) {
             // cross bracing
-            const s2 = s + (2 * half + 0.4) / posts
-            t.pos(s2, p2)
-            const a2 = t.angle(s2)
-            const x1 = p.x + Math.cos(a) * side * 1.48
-            const z1 = p.z + Math.sin(a) * side * 1.48
-            const x2 = p2.x + Math.cos(a2) * side * 1.48
-            const z2 = p2.z + Math.sin(a2) * side * 1.48
+            const f2 = t.frame(s + (2 * half + 0.4) / posts)
+            p.set(0, f.y, 0)
+            p2.set(0, f2.y, 0)
+            const x2 = f2.x + f2.nx * side * 1.48
+            const z2 = f2.z + f2.nz * side * 1.48
             const len = Math.hypot(x2 - x1, z2 - z1)
             for (const d of [-1, 1]) {
               const brace = box(0.07, 0.07, Math.hypot(len, 0.8), girderMat, 0.02)
@@ -245,7 +369,7 @@ export function buildTracks(root: THREE.Group) {
           at(box(w + 0.3, 0.3, 1.15, stoneMat, 0.1), 0, 0.15, 0),
         )
         pier.position.set(p.x, 0, p.z)
-        pier.rotation.y = -t.angle(s)
+        pier.rotation.y = t.frame(s).yaw
         root.add(pier)
       }
     }
@@ -275,9 +399,9 @@ export function buildTracks(root: THREE.Group) {
 
   // level crossing: timber deck between the rails so the diamond reads clearly
   const deck = grp()
-  for (const rot of [trackA.angle(trackA.crossS), trackB.angle(trackB.crossS)]) {
+  for (const rot of [trackA.frame(trackA.crossS).yaw, trackB.frame(trackB.crossS).yaw]) {
     const g = grp(at(box(0.78, 0.1, 2.9, plankMat, 0.03), 0, 0.27, 0))
-    g.rotation.y = -rot
+    g.rotation.y = rot
     deck.add(g)
   }
   deck.position.copy(CROSSING)
@@ -289,7 +413,7 @@ export function buildTracks(root: THREE.Group) {
   root.add(pad)
 }
 
-export { GAUGE, angDiff }
+export { GAUGE }
 
 // ---------- placement bookkeeping ----------
 
@@ -302,7 +426,7 @@ export function block(x: number, z: number, r: number) {
 export function onBoard(x: number, z: number, m = 0.6) {
   const hw = BOARD.w / 2 - m
   const hd = BOARD.d / 2 - m
-  const R = 3.2
+  const R = 3.6
   const dx = Math.max(0, Math.abs(x) - (hw - R))
   const dz = Math.max(0, Math.abs(z) - (hd - R))
   return Math.abs(x) < hw && Math.abs(z) < hd && dx * dx + dz * dz < R * R

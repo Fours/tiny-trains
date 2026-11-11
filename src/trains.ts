@@ -419,21 +419,19 @@ export function buildTrains(root: THREE.Group) {
   const orange = paint(0xee7b3a)
   const plum = paint(0x8a4f9e)
 
-  const a = new Train(trackA, [locomotive(red, navy), tender(red, navy), coach(green, navy), coach(navy, red), caboose(red, navy)], 30, 6.3, root)
-  const b = new Train(trackB, [locomotive(teal, orange), tender(teal, orange), logCar(orange), boxCar(yellow, plum), caboose(plum, orange)], 8, 3.7, root)
+  const a = new Train(trackA, [locomotive(red, navy), tender(red, navy), coach(green, navy), coach(navy, red), caboose(red, navy)], 30, 6.6, root)
+  const b = new Train(trackB, [locomotive(teal, orange), tender(teal, orange), logCar(orange), boxCar(yellow, plum), caboose(plum, orange)], 45, 4.8, root)
 
   // signals at each stop line
   const STOP = 3.3
   const place = (t: Track, lateral: number) => {
-    const s = t.crossS - STOP - 0.4
-    const p = t.pos(s)
-    const ang = t.angle(s)
-    const back = t.pos(s - 4)
-    return signalMast(root, p.x + Math.cos(ang) * lateral, p.z + Math.sin(ang) * lateral, back.x + Math.cos(ang) * lateral, back.z + Math.sin(ang) * lateral)
+    const f = t.frame(t.crossS - STOP - 0.4)
+    const back = t.frame(t.crossS - STOP - 4.4)
+    return signalMast(root, f.x + f.nx * lateral, f.z + f.nz * lateral, back.x + back.nx * lateral, back.z + back.nz * lateral)
   }
   const sigA = place(trackA, -2.0)
   const sigB = place(trackB, 2.0)
-  const bucks = [crossbuck(root, CROSSING.x, CROSSING.z + 2.9, 0), crossbuck(root, CROSSING.x, CROSSING.z - 2.9, Math.PI)]
+  const bucks = [crossbuck(root, CROSSING.x - 2.5, CROSSING.z + 2.5, Math.PI / 4), crossbuck(root, CROSSING.x + 2.5, CROSSING.z - 2.5, -Math.PI * 0.75)]
 
   // interlocking: A has the right of way. B is only cleared when A is far away.
   let owner: Train | null = null
@@ -456,7 +454,7 @@ export function buildTrains(root: THREE.Group) {
   }
 
   // A calls at Maple Hollow every other lap, stopping with its tail clear of the diamond
-  const STATION_S = (Math.PI / 2) * trackA.r + 6.6
+  const STATION_S = trackA.nearest(-17.5, 13).s
   let lap = 0
   let prevD = 0
   let dwell = 0
@@ -499,6 +497,6 @@ export function buildTrains(root: THREE.Group) {
       bucks.forEach((f) => f(owner !== null || waiting, time))
     },
     smoke,
-    debug: () => ({ owner: owner === a ? 'A' : owner === b ? 'B' : null, a: { ahead: a.ahead, v: a.v, len: a.len }, b: { ahead: b.ahead, v: b.v, len: b.len } }),
+    debug: () => ({ owner: owner === a ? 'A' : owner === b ? 'B' : null, a: { ahead: a.ahead, v: a.v, len: a.len, L: trackA.length }, b: { ahead: b.ahead, v: b.v, len: b.len, L: trackB.length } }),
   }
 }

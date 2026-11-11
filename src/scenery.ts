@@ -507,65 +507,68 @@ const face = (x: number, z: number, tx: number, tz: number) => Math.atan2(tx - x
 
 export function buildScenery(root: THREE.Group) {
   // ----- farm, inside loop A -----
-  place(root, barn(), -12.6, -4.0, face(-12.6, -4.0, -8, 2), 3.3)
-  place(root, silo(), -8.9, -6.6, 0.6, 1.4)
-  groundPatch(-10.6, -1.6, 3.4, 2.4, '#c7a36c', 0.85, 0.5)
+  place(root, barn(), -20.2, 0.6, face(-20.2, 0.6, -12, 6), 3.3)
+  place(root, silo(), -16.2, -2.2, 0.6, 1.4)
+  groundPatch(-17.4, 2.2, 3.4, 2.4, '#c7a36c', 0.85, 0.5)
   groundPath(
     [
-      [-11.2, -2.2],
-      [-9.4, 0.2],
-      [-8.2, 3.6],
-      [-7.8, 7.0],
+      [-18.6, 2.2],
+      [-15, 3.4],
+      [-11.5, 5.0],
+      [-9.4, 7.0],
     ],
     1.0,
   )
-  place(root, tractor(), -9.4, -2.6, 2.3, 1.2)
-  place(root, haystack(0.72), -14.6, 0.3, 0.4, 0.9)
-  place(root, haystack(0.62), -13.4, -0.3, 1.2, 0.8)
-  place(root, haystack(0.55), -14.0, 0.0, 0.8, 0, 1.15)
+  place(root, tractor(), -15.2, 1.0, 2.3, 1.2)
+  place(root, haystack(0.72), -22.7, 5.2, 0.4, 0.9)
+  place(root, haystack(0.62), -21.5, 4.6, 1.2, 0.8)
+  place(root, haystack(0.55), -22.1, 4.9, 0.8, 0, 1.15)
 
   // pasture
+  const PX = -17.2
+  const PZ = 7.4
   const pasture: [number, number][] = []
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * TAU + 0.2
-    pasture.push([-11.6 + Math.cos(a) * 4.0, 3.9 + Math.sin(a) * 2.7])
+    pasture.push([PX + Math.cos(a) * 4.0, PZ + Math.sin(a) * 2.7])
   }
   fence(root, pasture, true, white, 10)
-  block(-13.6, 3.9, 2.5)
-  block(-9.6, 3.9, 2.5)
-  block(-11.6, 3.9, 2.9)
-  groundPatch(-11.6, 3.9, 3.9, 2.6, '#8fc257', 0.6)
-  groundPatch(-9.2, 2.3, 1.2, 0.9, '#b79a64', 0.7)
+  block(PX - 2, PZ, 2.5)
+  block(PX + 2, PZ, 2.5)
+  block(PX, PZ, 2.9)
+  groundPatch(PX, PZ, 3.9, 2.6, '#8fc257', 0.6)
+  groundPatch(PX + 2.4, PZ - 1.6, 1.2, 0.9, '#b79a64', 0.7)
   const trough = grp(at(box(1.3, 0.34, 0.5, timber, 0.05), 0, 0.3, 0), at(box(1.14, 0.06, 0.36, mat(0x4d93c4, { rough: 0.1 }), 0.02), 0, 0.46, 0))
   for (const x of [-0.5, 0.5]) trough.add(at(box(0.1, 0.3, 0.5, timber, 0.02), x, 0.12, 0))
-  place(root, trough, -12.4, 5.6, 0.3)
+  place(root, trough, PX - 0.8, PZ + 1.7, 0.3)
 
   // pig pen
   const pen: [number, number][] = []
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU
-    pen.push([-6.9 + Math.cos(a) * 1.75, -2.5 + Math.sin(a) * 1.55])
+    pen.push([-11.2 + Math.cos(a) * 1.75, -1.2 + Math.sin(a) * 1.55])
   }
   fence(root, pen, true, timber)
-  groundPatch(-6.9, -2.5, 1.9, 1.7, '#8a6444', 0.95)
-  groundPatch(-7.2, -2.3, 0.9, 0.7, '#6b4a33', 0.9)
-  block(-6.9, -2.5, 1.9)
+  groundPatch(-11.2, -1.2, 1.9, 1.7, '#8a6444', 0.95)
+  groundPatch(-11.5, -1.0, 0.9, 0.7, '#6b4a33', 0.9)
+  block(-11.2, -1.2, 1.9)
 
-  // wheat field + scarecrow
-  groundPatch(-6.0, -7.4, 2.5, 1.7, '#c9a04e', 0.9, 0.2)
-  place(root, scarecrow(), -6.0, -7.4, 0.5)
-  place(root, windmill(), -4.5, 5.2, face(-4.5, 5.2, 4, 16), 1.9)
-  groundPatch(-4.5, 5.2, 2.2, 2.2, '#c9ad77', 0.7)
+  // wheat field + scarecrow, windmill
+  groundPatch(-6.6, 0.4, 2.5, 1.7, '#c9a04e', 0.9, 0.2)
+  place(root, scarecrow(), -6.6, 0.4, 0.5)
+  place(root, windmill(), -3.6, 7.0, face(-3.6, 7.0, 6, 20), 1.9)
+  groundPatch(-3.6, 7.0, 2.2, 2.2, '#c9ad77', 0.7)
 
-  // ----- station, hugging the inside of loop A at the front -----
-  const sMid = (Math.PI / 2) * trackA.r
+  // ----- station, along the inside of loop A's front straight -----
+  const SX = -9.2
+  const sMid = trackA.nearest(SX, CROSSING.z).s
+  const HALF = 5.4
   const platTop = mat(0xd9c7a8, { rough: 0.9, map: tex.bricks(1, 14) })
-  root.add(mesh(sweep(trackA, sMid - 4.6, sMid + 4.6, 0.3, () => rect(-2.3, 0, 1.75, 0.46), true), platTop))
-  root.add(mesh(sweep(trackA, sMid - 4.6, sMid + 4.6, 0.3, () => rect(-1.5, 0.4, 0.16, 0.08), true), mat(0xf4c542, { rough: 0.6 })))
+  root.add(mesh(sweep(trackA, sMid - HALF, sMid + HALF, 0.3, () => rect(-2.3, 0, 1.75, 0.46), true), platTop))
+  root.add(mesh(sweep(trackA, sMid - HALF, sMid + HALF, 0.3, () => rect(-1.5, 0.4, 0.16, 0.08), true), mat(0xf4c542, { rough: 0.6 })))
   for (const e of [-1, 1]) {
-    const p = trackA.pos(sMid + e * 4.6)
-    const a = trackA.angle(sMid + e * 4.6)
-    root.add(at(box(1.75, 0.46, 0.2, platTop, 0.04), p.x - Math.cos(a) * 2.3, 0.23, p.z - Math.sin(a) * 2.3, 0, -a, 0))
+    const f = trackA.frame(sMid + e * HALF)
+    root.add(at(box(1.75, 0.46, 0.2, platTop, 0.04), f.x - f.nx * 2.3, 0.23, f.z - f.nz * 2.3, 0, f.yaw, 0))
   }
   const st = grp()
   const sw = 5.0
@@ -594,30 +597,31 @@ export function buildScenery(root: THREE.Group) {
   sign.userData.keep = true
   st.add(at(box(2.44, 0.7, 0.08, white, 0.04), 0, 2.02, 2.56), at(sign, 0, 2.02, 2.61))
   chimney(st, 1.7, 2.9, -0.3, 1.2)
-  place(root, st, -7.2, 7.0, 0, 0)
-  block(-9.0, 7.0, 2.2)
-  block(-5.4, 7.0, 2.2)
-  block(-7.2, 9.4, 3.2)
-  groundPatch(-7.2, 8.6, 4.6, 1.6, '#d6bf93', 0.8)
-  place(root, bench(), -9.4, 9.6, 0.12, 0, 0.46)
-  place(root, bench(), -5.0, 9.6, -0.12, 0, 0.46)
-  place(root, lampPost(true), -10.9, 9.2, 0, 0, 0.46)
-  place(root, lampPost(false), -3.5, 9.2, 0, 0, 0.46)
-  place(root, pegPerson(0x3f6fb5, 0x2d3a55), -7.9, 9.9, 0.2, 0, 0.46)
-  place(root, pegPerson(0xe8617a, 0xf4c542), -6.6, 9.7, -0.3, 0, 0.46)
-  place(root, pegPerson(0x58a55c, 0x8a5a36), -8.9, 10.0, 0.4, 0, 0.46)
-  // luggage
+  place(root, st, SX, 8.0, 0, 0)
+  block(SX - 1.8, 8.0, 2.2)
+  block(SX + 1.8, 8.0, 2.2)
+  block(SX - 2.5, 10.4, 2.6)
+  block(SX + 2.5, 10.4, 2.6)
+  groundPatch(SX, 9.6, 5.4, 1.6, '#d6bf93', 0.8)
+  place(root, bench(), SX - 3.4, 10.5, 0, 0, 0.46)
+  place(root, bench(), SX + 3.3, 10.5, 0, 0, 0.46)
+  place(root, lampPost(true), -14.0, 10.3, 0, 0, 0.46)
+  place(root, lampPost(false), -4.6, 10.3, 0, 0, 0.46)
+  place(root, pegPerson(0x3f6fb5, 0x2d3a55), SX - 0.8, 10.9, 0.2, 0, 0.46)
+  place(root, pegPerson(0xe8617a, 0xf4c542), SX + 0.6, 10.7, -0.3, 0, 0.46)
+  place(root, pegPerson(0x58a55c, 0x8a5a36), SX - 2.0, 11.0, 0.4, 0, 0.46)
   const lug = grp(at(box(0.5, 0.34, 0.32, mat(0x9c5a3c, { rough: 0.6 }), 0.06), 0, 0.17, 0), at(box(0.4, 0.26, 0.28, mat(0x3f7f6f, { rough: 0.6 }), 0.06), 0.03, 0.47, 0, 0, 0.3, 0))
-  place(root, lug, -6.0, 9.9, 0.4, 0, 0.46)
+  place(root, lug, SX + 1.6, 10.9, 0.4, 0, 0.46)
 
-  // ----- village, in the crescent of loop B -----
-  const plaza: [number, number] = [10.7, 0.3]
-  groundPatch(plaza[0], plaza[1], 2.4, 2.2, '#d9c59c', 0.9)
+  // ----- village, inside loop B -----
+  const plaza: [number, number] = [14.2, 2.0]
+  groundPatch(plaza[0], plaza[1], 2.6, 2.4, '#d9c59c', 0.9)
   place(root, well(), plaza[0], plaza[1], 0.4, 1.7)
   const houses: [HouseOpts, number, number][] = [
-    [{ w: 2.9, d: 2.5, h: 1.9, wall: 0xf6b8c4, roof: 0x8f4b5e, door: 0x6a3d7a, shutter: 0xffffff, porch: true }, 13.7, 3.5],
-    [{ w: 2.6, d: 2.8, h: 2.3, wall: 0x9fd3e8, roof: 0x34506f, door: 0xe2572f, shutter: 0xfff0c9, gableFront: true }, 13.9, -2.5],
-    [{ w: 3.0, d: 2.4, h: 1.8, wall: 0xf9e08e, roof: 0xc75c3a, door: 0x2f7f6f, shutter: 0x2f7f6f, porch: true }, 9.3, -4.7],
+    [{ w: 2.9, d: 2.5, h: 1.9, wall: 0xf6b8c4, roof: 0x8f4b5e, door: 0x6a3d7a, shutter: 0xffffff, porch: true }, 18.0, 6.6],
+    [{ w: 2.6, d: 2.8, h: 2.3, wall: 0x9fd3e8, roof: 0x34506f, door: 0xe2572f, shutter: 0xfff0c9, gableFront: true }, 19.6, -2.6],
+    [{ w: 3.0, d: 2.4, h: 1.8, wall: 0xf9e08e, roof: 0xc75c3a, door: 0x2f7f6f, shutter: 0x2f7f6f, porch: true }, 13.4, -4.6],
+    [{ w: 2.6, d: 2.4, h: 1.8, wall: 0xbfe3c0, roof: 0x6b4f8a, door: 0xf4b63a, shutter: 0xffffff, porch: true }, 10.9, 7.4],
   ]
   for (const [o, x, z] of houses) {
     const ry = face(x, z, plaza[0], plaza[1])
@@ -631,61 +635,71 @@ export function buildScenery(root: THREE.Group) {
       0.8,
     )
   }
-  place(root, lampPost(true), 9.2, 1.4, 0, 0.3)
-  place(root, lampPost(false), 12.0, -0.9, 0, 0.3)
-  place(root, bench(), 11.9, 1.7, face(11.9, 1.7, plaza[0], plaza[1]), 0.6)
-  place(root, pegPerson(0xf08a3c, 0xffffff), 9.9, -1.0, 0.8)
-  place(root, pegPerson(0x8a5fc2, 0x2d3a55), 11.6, 0.9, -2.0)
+  // lane from the square down to the pond
+  groundPath(
+    [
+      [14.2, 3.6],
+      [13.9, 6.5],
+      [13.7, 9.5],
+      [13.6, 11.2],
+    ],
+    0.8,
+  )
+  place(root, lampPost(true), 12.6, 3.6, 0, 0.3)
+  place(root, lampPost(false), 16.0, 0.4, 0, 0.3)
+  place(root, bench(), 15.8, 3.6, face(15.8, 3.6, plaza[0], plaza[1]), 0.6)
+  place(root, bench(), 11.6, 11.6, face(11.6, 11.6, 13.6, 13.4), 0.6)
+  place(root, pegPerson(0xf08a3c, 0xffffff), 13.2, 0.5, 0.8)
+  place(root, pegPerson(0x8a5fc2, 0x2d3a55), 15.3, 2.9, -2.0)
+  place(root, pegPerson(0x3f9bd6, 0xe8503f), 16.3, 11.9, -1.2)
   // market stall
   const stall = grp(at(box(1.6, 0.7, 0.8, timberLight, 0.05), 0, 0.35, 0), at(box(1.9, 0.1, 1.2, mat(0xe8503f, { rough: 0.8, map: tex.planks(6, 1) }), 0.03), 0, 1.75, 0.05, 0.2, 0, 0))
   for (const x of [-0.75, 0.75]) for (const z of [-0.35, 0.35]) stall.add(at(box(0.08, 1.75, 0.08, white, 0.02), x, 0.88, z))
   for (let i = 0; i < 12; i++) stall.add(at(sph(0.11, mat([0xe8503f, 0xf4a83a, 0x7fc24f][i % 3], { rough: 0.5 }), 8, 6), -0.6 + (i % 6) * 0.24, 0.78, -0.15 + Math.floor(i / 6) * 0.26))
-  place(root, stall, 7.9, -1.3, face(7.9, -1.3, plaza[0], plaza[1]), 1.0)
+  place(root, stall, 11.2, -0.4, face(11.2, -0.4, plaza[0], plaza[1]), 1.0)
 
-  // cottage in the front-right corner
-  place(root, house({ w: 2.7, d: 2.4, h: 1.7, wall: 0xfdf0d8, roof: 0x5f8f4a, door: 0xd6453d, shutter: 0x5f8f4a, porch: true }), 19.3, 12.2, face(19.3, 12.2, 8, 6), 2.2)
+  // chapel on the hill behind the village
+  place(root, chapel(), 14, -12.5, face(14, -12.5, 12, 4), 2.3, groundY(14, -12.5) - 0.35)
+
+  // ----- cottage and garden at the front -----
+  place(root, house({ w: 2.7, d: 2.4, h: 1.7, wall: 0xfdf0d8, roof: 0x5f8f4a, door: 0xd6453d, shutter: 0x5f8f4a, porch: true }), -15.5, 18.6, face(-15.5, 18.6, -6, 24), 2.2)
   groundPath(
     [
-      [18.2, 11.2],
-      [16.6, 11.4],
-      [15.2, 13.6],
+      [-14.3, 19.7],
+      [-11, 20.2],
+      [-7, 19.2],
     ],
     0.7,
   )
   fence(
     root,
     [
-      [16.2, 15.6],
-      [21.4, 15.4],
-      [22.3, 12.0],
+      [-20, 21.2],
+      [-11.5, 21.5],
+      [-4, 21.1],
     ],
     false,
   )
 
-  // chapel on the back-right hill
-  place(root, chapel(), 18.6, -12.4, face(18.6, -12.4, 6, 4), 2.3, groundY(18.6, -12.4) - 0.35)
-
-  // ----- railway furniture -----
-  place(root, signalBox(), 1.3, 12.0, face(1.3, 12.0, CROSSING.x, CROSSING.z), 1.5)
-  place(root, waterTower(), 3.6, 15.0, 2.2, 1.5)
-  groundPatch(2.4, 13.4, 2.6, 2.4, '#bfa878', 0.6)
-
-  // ----- camp at the back -----
-  place(root, tent(), -12.6, -15.0, 0.5, 1.4)
-  place(root, campfire(), -10.6, -14.6, 0, 0.7)
-  groundPatch(-11.2, -14.8, 2.2, 1.5, '#b99a66', 0.7)
-  const log = grp(at(cyl(0.2, 0.2, 1.2, timber, 12), 0, 0.2, 0, 0, 0, Math.PI / 2))
-  place(root, log, -10.4, -13.4, 0.3, 0.5)
-  place(root, pegPerson(0xd9534f, 0x3f7f4f), -9.7, -14.9, -1.6)
-
-  // woodpile + crates near the signal box
+  // ----- railway furniture in the lens between the loops -----
+  place(root, signalBox(), 3.7, 6.6, face(3.7, 6.6, 1.2, 14), 1.5)
+  place(root, waterTower(), 4.0, 0.4, 2.2, 1.4)
+  groundPatch(3.6, 4.4, 1.8, 3.6, '#bfa878', 0.6)
   const pile = grp()
   for (let r = 0; r < 3; r++) for (let i = 0; i < 4 - r; i++) pile.add(at(cyl(0.14, 0.14, 0.9, timber, 10), 0, 0.14 + r * 0.25, -0.42 + i * 0.29 + r * 0.14, 0, 0, Math.PI / 2))
-  place(root, pile, -0.6, 13.6, 0.5, 0.7)
+  place(root, pile, 2.6, 2.6, 0.5, 0.7)
   for (const [x, z, s] of [
-    [4.9, 12.6, 0.6],
-    [5.5, 12.9, 0.45],
+    [4.9, 3.6, 0.6],
+    [5.0, 4.4, 0.45],
   ]) {
     place(root, at(box(s, s, s, timberLight, 0.04), 0, 0, 0), x, z, rand(), 0.4, s / 2)
   }
+
+  // ----- camp at the back -----
+  place(root, tent(), -13.2, -18.4, 0.5, 1.4)
+  place(root, campfire(), -11.2, -17.8, 0, 0.7)
+  groundPatch(-11.8, -18.0, 2.2, 1.5, '#b99a66', 0.7)
+  const log = grp(at(cyl(0.2, 0.2, 1.2, timber, 12), 0, 0.2, 0, 0, 0, Math.PI / 2))
+  place(root, log, -11.0, -16.5, 0.3, 0.5)
+  place(root, pegPerson(0xd9534f, 0x3f7f4f), -10.2, -18.2, -1.6)
 }
