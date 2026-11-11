@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { BOARD, BRIDGE_HALF, CROSSING, block, free, onBoard, trackB } from './tracks.ts'
 import { at, blob, cyl, dyn, grp, mat, mesh, lumpy, mulberry, pick, rand, rr, sph, tick, turfMat, TAU } from './util.ts'
 import { groundPatch } from './world.ts'
+import { Batch, SUN_DIR, barkTexture, fallenLeaf, firTier, leafClump, leafMaterial, trunkGeometry } from './trees.ts'
 
 // ---------- hills ----------
 
@@ -61,40 +62,6 @@ function foliage(color: number, amp: number, grass = false, rough = 0.85) {
     if (grass) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n normal = normalize(vNormal);')
   }
   return m
-}
-
-// ---------- instanced batches ----------
-
-class Batch {
-  private items: { m: THREE.Matrix4; c: THREE.Color }[] = []
-  private d = new THREE.Object3D()
-  private geo: THREE.BufferGeometry
-  private material: THREE.Material
-  private cast: boolean
-  constructor(geo: THREE.BufferGeometry, material: THREE.Material, cast = true) {
-    this.geo = geo
-    this.material = material
-    this.cast = cast
-  }
-  add(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: THREE.ColorRepresentation, rx = 0, ry = 0, rz = 0) {
-    this.d.position.set(x, y, z)
-    this.d.scale.set(sx, sy, sz)
-    this.d.rotation.set(rx, ry, rz)
-    this.d.updateMatrix()
-    this.items.push({ m: this.d.matrix.clone(), c: new THREE.Color(color) })
-  }
-  build(root: THREE.Group) {
-    if (!this.items.length) return
-    const im = new THREE.InstancedMesh(this.geo, this.material, this.items.length)
-    this.items.forEach((it, i) => {
-      im.setMatrixAt(i, it.m)
-      im.setColorAt(i, it.c)
-    })
-    im.castShadow = this.cast
-    im.receiveShadow = true
-    im.frustumCulled = false
-    root.add(im)
-  }
 }
 
 function grassTuft(blades: number, seed: number) {
@@ -213,7 +180,38 @@ export function buildNature(root: THREE.Group) {
 
   // ----- batches -----
   const leafGeo = lumpy(3, 0.2, 11)
-  const leaves = new Batch(leafGeo, foliage(0xffffff, 0.035))
+  // canopies: balls of real leaves around a dark core that hides the gaps
+  const leafMat = leafMaterial(windTime, SUN_DIR, { sway: 0.03, flutter: 0.04 })
+  const clumps = new Batch(leafClump(31, 150, 0.4), leafMat)
+  const airy = new Batch(leafClump(47, 105, 0.32, 0.8), leafMat)
+  const shrub = new Batch(leafClump(59, 68, 0.48), leafMat)
+  const boughs = new Batch(firTier(71, 185), leafMaterial(windTime, SUN_DIR, { sway: 0.015, flutter: 0.02, warm: 0.5, tips: 0.26 }))
+  const cores = new Batch(lumpy(2, 0.14, 12), foliage(0xffffff, 0.02))
+  // optional decoration applied to every clump of the tree being built
+  let fruit: number | null = null
+  let blossom: number | null = null
+  const canopy = (x: number, y: number, z: number, r: number, squash: number, color: THREE.Color, batch = clumps, core = 0.7) => {
+    batch.add(x, y, z, r, r * squash, r, color, 0, rand() * TAU, 0)
+    cores.add(x, y, z, r * core, r * squash * core * 0.97, r * core, color.clone().multiplyScalar(0.68), rand() * 6, rand() * 6, rand() * 6)
+    const dot = (el0: number, el1: number, size: number, flat: number, col: THREE.ColorRepresentation) => {
+      const a = rand() * TAU
+      const el = rr(el0, el1)
+      petals.add(x + Math.cos(a) * Math.cos(el) * r * 0.98, y + Math.sin(el) * r * squash * 0.98, z + Math.sin(a) * Math.cos(el) * r * 0.98, size, size * flat, size, col)
+    }
+    if (fruit !== null) for (let i = 0; i < 4; i++) dot(-0.7, 0.5, 0.13, 1, jitter(fruit, 0.02, 0.05, 0.05))
+    if (blossom !== null) for (let i = 0; i < 9; i++) dot(-0.3, 1.5, 0.085, 0.8, jitter(blossom, 0.01, 0.05, 0.04))
+  }
+  const litter = new Batch(fallenLeaf(), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide }), false)
+  const scatterLitter = (x: number, z: number, radius: number, count: number, color: THREE.Color) => {
+    for (let i = 0; i < count; i++) {
+      const a = rand() * TAU
+      const d = Math.sqrt(rand()) * radius
+      const lx = x + Math.cos(a) * d
+      const lz = z + Math.sin(a) * d
+      const sz = rr(0.2, 0.32)
+      litter.add(lx, groundY(lx, lz) + rr(0.03, 0.07), lz, sz, sz, sz, color.clone().offsetHSL(rr(-0.03, 0.03), 0, rr(-0.08, 0.08)), rr(-0.3, 0.3), rand() * TAU, rr(-0.3, 0.3))
+    }
+  }
   const coneGeo = new THREE.ConeGeometry(1, 1, 10, 3)
   {
     const p = coneGeo.getAttribute('position')
@@ -228,9 +226,11 @@ export function buildNature(root: THREE.Group) {
     coneGeo.computeVertexNormals()
   }
   const cones = new Batch(coneGeo, foliage(0xffffff, 0.02))
-  const trunkGeo = new THREE.CylinderGeometry(0.62, 1, 1, 10)
-  trunkGeo.translate(0, 0.5, 0)
-  const trunks = new Batch(trunkGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }))
+  const trunkGeo = trunkGeometry(8)
+  const trunks = new Batch(trunkGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, map: barkTexture(false) }))
+  const birchTrunks = new Batch(trunkGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, map: barkTexture(true) }))
+  const limbGeo = new THREE.CylinderGeometry(0.55, 1, 1, 7).translate(0, 0.5, 0)
+  const limbs = new Batch(limbGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92 }))
   const rockGeo = lumpy(1, 0.28, 3, true)
   const rocks = new Batch(rockGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true }))
   const grass = new Batch(grassTuft(7, 21), foliage(0xffffff, 0.12, true, 1), false)
@@ -238,37 +238,80 @@ export function buildNature(root: THREE.Group) {
   const stems = new Batch(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), false)
 
   const greens = [0x3f9336, 0x4fa53d, 0x66b544, 0x35823f, 0x7fbf45, 0x479a52]
-  const special = [0xf7a8c4, 0xf2c14e, 0xf08a4b, 0xfbd0df]
+  const special = [0xff9cc4, 0xf2c14e, 0xf08a4b, 0xffc2dc]
   const pines = [0x2f7f5a, 0x2a6f55, 0x3b8a57, 0x25645a]
 
-  const roundTree = (x: number, z: number, s: number, hex = pick(greens), birch = false) => {
-    const y = groundY(x, z)
-    const th = (birch ? 2.1 : 1.5) * s
-    trunks.add(x, y - 0.05, z, 0.27 * s * (birch ? 0.7 : 1), th + 0.4 * s, 0.27 * s * (birch ? 0.7 : 1), birch ? 0xf1ece0 : jitter(0x8a5a38, 0.01, 0.05, 0.05), rr(-0.06, 0.06), 0, rr(-0.06, 0.06))
-    const base = new THREE.Color(hex)
-    const main = 1.2 * s * (birch ? 0.85 : 1)
-    leaves.add(x, y + th + main * 0.62, z, main, main * 0.92, main, base.clone().offsetHSL(0, 0, rr(-0.02, 0.04)), rand() * 6, rand() * 6, rand() * 6)
-    const n = 5 + Math.floor(rand() * 3)
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + rr(-0.3, 0.3)
-      const el = rr(-0.25, 0.75)
-      const r = main * rr(0.5, 0.74)
-      const d = main * rr(0.55, 0.8)
-      leaves.add(x + Math.cos(a) * d * Math.cos(el), y + th + main * 0.62 + Math.sin(el) * d * 0.9, z + Math.sin(a) * d * Math.cos(el), r, r * 0.9, r, base.clone().offsetHSL(rr(-0.025, 0.025), rr(-0.05, 0.05), rr(-0.05, 0.08) + el * 0.05), rand() * 6, rand() * 6, rand() * 6)
+  const P0 = new THREE.Vector3()
+  const DIR = new THREE.Vector3()
+  /** Limbs fan out from the top of the trunk; each carries a clump of leaves at its end. */
+  const crown = (x: number, y: number, z: number, s: number, count: number, reach: number, lift: [number, number], size: [number, number], base: THREE.Color, bark: THREE.ColorRepresentation, batch = clumps, core = 0.7) => {
+    const a0 = rand() * TAU
+    for (let i = 0; i < count; i++) {
+      const a = a0 + (i / count) * TAU + rr(-0.35, 0.35)
+      const el = rr(lift[0], lift[1])
+      DIR.set(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el))
+      const len = reach * rr(0.85, 1.15)
+      P0.set(x, y, z)
+      limbs.addAlong(P0, DIR, 0.1 * s, len, 0.1 * s, bark)
+      const r = s * rr(size[0], size[1])
+      canopy(x + DIR.x * len, y + DIR.y * len + r * 0.25, z + DIR.z * len, r, 0.88, base.clone().offsetHSL(rr(-0.03, 0.03), rr(-0.06, 0.04), rr(-0.07, 0.05) + (el - 0.6) * 0.06), batch, core)
     }
+  }
+
+  const roundTree = (x: number, z: number, s: number, hex = pick(greens), birch = false, apples = false) => {
+    const y = groundY(x, z)
+    const base = new THREE.Color(hex)
+    const pink = hex === special[0] || hex === special[3]
+    fruit = apples ? 0xe2372c : null
+    blossom = pink ? 0xfff4f8 : null
+    // a carpet of fallen petals and leaves under the showier trees
+    if (special.includes(hex)) scatterLitter(x, z, 2.3 * s, 34, base.clone().offsetHSL(0, 0, pink ? 0.06 : -0.04))
+    else if (!birch) scatterLitter(x, z, 1.9 * s, 7, new THREE.Color(0xd9b24a))
+    if (apples) for (let i = 0; i < 5; i++) petals.add(x + rr(-1.6, 1.6) * s, y + 0.12, z + rr(-1.6, 1.6) * s, 0.13, 0.13, 0.13, 0xe2372c)
+    const tilt = [rr(-0.05, 0.05), rand() * TAU, rr(-0.05, 0.05)] as const
+    if (birch) {
+      // slender white stem, steep limbs, small airy sprays of pale leaves
+      const th = 2.9 * s
+      birchTrunks.add(x, y - 0.05, z, 0.17 * s, th, 0.17 * s, 0xffffff, ...tilt)
+      crown(x, y + th * 0.62, z, s, 3, 1.0 * s, [0.55, 1.0], [0.6, 0.76], base, 0xe9e4d8, airy, 0.52)
+      crown(x, y + th * 0.9, z, s, 3, 0.8 * s, [0.2, 0.7], [0.56, 0.7], base, 0xe9e4d8, airy, 0.52)
+      canopy(x, y + th + 0.45 * s, z, 0.78 * s, 1.05, base.clone().offsetHSL(0.01, 0, 0.05), airy, 0.52)
+    } else if (rand() < 0.3 && !special.includes(hex)) {
+      // tall, narrow tree: clumps stacked up a straight leader
+      const bark = jitter(0x8a5a38, 0.01, 0.05, 0.05)
+      const th = 2.2 * s
+      trunks.add(x, y - 0.05, z, 0.26 * s, th + 1.6 * s, 0.26 * s, bark, ...tilt)
+      crown(x, y + th * 0.75, z, s, 4, 0.8 * s, [0.1, 0.45], [0.74, 0.92], base, bark)
+      crown(x, y + th + 0.7 * s, z, s, 3, 0.62 * s, [0.3, 0.7], [0.66, 0.82], base, bark)
+      canopy(x, y + th + 2.05 * s, z, 0.86 * s, 1.25, base.clone().offsetHSL(0.012, 0, 0.06))
+    } else {
+      // broad spreading crown, wider than it is tall
+      const bark = jitter(0x8a5a38, 0.01, 0.05, 0.05)
+      const th = 1.75 * s
+      trunks.add(x, y - 0.05, z, 0.32 * s, th + 0.5 * s, 0.32 * s, bark, ...tilt)
+      crown(x, y + th * 0.82, z, s, 5, 1.32 * s, [0.25, 0.6], [0.86, 1.06], base, bark)
+      crown(x, y + th, z, s, 3, 1.0 * s, [0.8, 1.15], [0.8, 0.98], base, bark)
+      canopy(x, y + th + 1.45 * s, z, 1.12 * s, 0.86, base.clone().offsetHSL(0.012, 0, 0.06))
+      // a heart of foliage that fuses the limb clumps into one crown
+      canopy(x, y + th + 0.75 * s, z, 1.3 * s, 0.7, base.clone().offsetHSL(0, 0, -0.03))
+    }
+    fruit = blossom = null
     block(x, z, 0.75 * s)
   }
 
   const pine = (x: number, z: number, s: number) => {
     const y = groundY(x, z)
     const hex = pick(pines)
-    trunks.add(x, y - 0.05, z, 0.22 * s, 1.0 * s, 0.22 * s, jitter(0x7a4c30, 0.01, 0.05, 0.04))
-    const tiers = 4
+    trunks.add(x, y - 0.05, z, 0.21 * s, 1.5 * s, 0.21 * s, jitter(0x7a4c30, 0.01, 0.05, 0.04), 0, rand() * TAU, 0)
+    const tiers = 6
     for (let i = 0; i < tiers; i++) {
       const u = i / (tiers - 1)
-      const r = (1.15 - u * 0.68) * s
-      const h = (1.35 - u * 0.25) * s
-      cones.add(x, y + (0.55 + i * 0.72) * s, z, r, h, r, new THREE.Color(hex).offsetHSL(rr(-0.015, 0.015), 0, u * 0.07 + rr(-0.02, 0.02)), 0, rand() * 6, 0)
+      const r = (1.26 - u * 0.92) * s
+      const h = (1.2 - u * 0.25) * s
+      const yy = y + (0.62 + i * 0.56) * s
+      const col = new THREE.Color(hex).offsetHSL(rr(-0.015, 0.015), 0, u * 0.08 + rr(-0.02, 0.02))
+      boughs.add(x, yy, z, r, h, r, col, 0, rand() * 6, 0)
+      cones.add(x, yy + h * 0.03, z, r * 0.84, h * 0.92, r * 0.84, col.clone().multiplyScalar(0.72), 0, rand() * 6, 0)
     }
     block(x, z, 0.7 * s)
   }
@@ -281,7 +324,7 @@ export function buildNature(root: THREE.Group) {
       const a = (i / n) * TAU + rand()
       const r = s * rr(0.42, 0.62)
       const d = i === 0 ? 0 : s * 0.42
-      leaves.add(x + Math.cos(a) * d, y + r * 0.62, z + Math.sin(a) * d, r, r * 0.82, r, base.clone().offsetHSL(rr(-0.02, 0.02), 0, rr(-0.04, 0.07)), rand() * 6, rand() * 6, rand() * 6)
+      canopy(x + Math.cos(a) * d, y + r * 0.62, z + Math.sin(a) * d, r, 0.82, base.clone().offsetHSL(rr(-0.02, 0.02), 0, rr(-0.04, 0.07)), shrub)
       if (berries) {
         const col = pick([0xff5a6e, 0xffd24a, 0xffffff, 0xff9a4a])
         for (let k = 0; k < 5; k++) {
@@ -322,7 +365,7 @@ export function buildNature(root: THREE.Group) {
     [11.0, -15.2, 1.0],
     [22.4, 1.6, 0.95, 0x8cc84f],
   ]
-  for (const [x, z, s, c] of heroes) roundTree(x, z, s, c)
+  for (const [x, z, s, c] of heroes) roundTree(x, z, s, c, false, (x === -12.4 && z === 2.6) || (x === 10.2 && z === 16.6))
   // firs in the lens between the two loops and on the hills
   for (const [x, z, s] of [
     [4.5, -3.6, 0.8],
@@ -439,7 +482,14 @@ export function buildNature(root: THREE.Group) {
   }
   block(-6.6, 0.4, 2.3)
 
-  leaves.build(root)
+  clumps.build(root)
+  litter.build(root)
+  airy.build(root)
+  shrub.build(root)
+  boughs.build(root)
+  cores.build(root)
+  limbs.build(root)
+  birchTrunks.build(root)
   cones.build(root)
   trunks.build(root)
   rocks.build(root)

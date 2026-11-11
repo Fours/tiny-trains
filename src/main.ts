@@ -10,6 +10,7 @@ import { buildScenery } from './scenery.ts'
 import { buildNature } from './nature.ts'
 import { buildAnimals } from './animals.ts'
 import { buildExtras } from './extras.ts'
+import { SUN_DIR } from './trees.ts'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#scene')!
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
@@ -28,7 +29,7 @@ scene.environmentIntensity = 0.42
 
 // ---------- lights: a low warm sun with cool sky fill ----------
 const sun = new THREE.DirectionalLight(0xffc98f, 3.3)
-sun.position.set(-36, 30, 22)
+sun.position.copy(SUN_DIR).multiplyScalar(52)
 sun.castShadow = true
 sun.shadow.mapSize.set(4096, 4096)
 const sc = sun.shadow.camera
