@@ -5,7 +5,7 @@ import { createPost } from './post.ts'
 import { buildTracks } from './tracks.ts'
 import { buildTrains } from './trains.ts'
 import { buildGround } from './world.ts'
-import { bake, chimneys, clamp, rr, tick } from './util.ts'
+import { bake, chimneys, clamp, fires, rr, tick } from './util.ts'
 import { buildScenery } from './scenery.ts'
 import { buildNature } from './nature.ts'
 import { buildAnimals } from './animals.ts'
@@ -60,15 +60,26 @@ buildExtras(world)
 buildGround(world)
 bake(world)
 
-// lazy smoke from every chimney
+// hearth smoke: a thin blue-grey column from every chimney that meanders as it climbs
 const puffClock = chimneys.map(() => Math.random())
 const puffVel = new THREE.Vector3()
-tick.push((dt) => {
+const puffPos = new THREE.Vector3()
+let fireClock = 0
+tick.push((dt, time) => {
   chimneys.forEach((c, i) => {
     if ((puffClock[i] -= dt) > 0) return
-    puffClock[i] = rr(0.5, 0.9)
-    trains.smoke.emit(c, puffVel.set(rr(-0.1, 0.1), rr(0.9, 1.3), rr(-0.1, 0.1)), 0.26, 3.4)
+    puffClock[i] = rr(0.09, 0.14)
+    puffVel.set(Math.sin(time * 0.7 + i * 2.1) * 0.3, rr(0.95, 1.25), Math.cos(time * 0.5 + i * 1.3) * 0.25)
+    trains.smoke.emit(c, puffVel, rr(0.28, 0.38), 5.5, 0.8, 'wisp')
   })
+  // campfire: woodsmoke and a steady drift of embers
+  if ((fireClock -= dt) > 0) return
+  fireClock = 0.07
+  for (const f of fires) {
+    puffPos.copy(f).add(puffVel.set(rr(-0.12, 0.12), 0, rr(-0.12, 0.12)))
+    if (Math.random() < 0.6) trains.smoke.emit(puffPos, puffVel.set(rr(-0.15, 0.15), rr(1.1, 1.6), rr(-0.15, 0.15)), rr(0.3, 0.45), 4.5, 0.55, 'wisp')
+    trains.smoke.spark(puffPos, puffVel.set(rr(-0.35, 0.35), rr(1.2, 2.8), rr(-0.35, 0.35)), 1.7, 0.08)
+  }
 })
 
 // ---------- camera rig: arrow keys step around the four sides ----------
@@ -93,6 +104,7 @@ window.addEventListener('keydown', (e) => {
 })
 
 const post = createPost(renderer, scene, camera)
+post.excludeFromAO.push(trains.smoke.mesh, trains.smoke.sparks)
 
 // Looks come first, but if a machine can't hold ~30fps the resolution steps down a notch at a time.
 let quality = 1
@@ -147,4 +159,15 @@ renderer.setAnimationLoop((now) => {
 })
 
 // handy for poking at the scene from the console during development
-if (import.meta.env.DEV) Object.assign(window, { scene, camera, rig, post, renderer, target, trains })
+if (import.meta.env.DEV) {
+  // fast-forward the simulation without waiting on animation frames
+  let simTime = 1000
+  const step = (frames: number) => {
+    for (let i = 0; i < frames; i++) {
+      simTime += 1 / 30
+      trains.update(1 / 30, simTime)
+      for (const f of tick) f(1 / 30, simTime)
+    }
+  }
+  Object.assign(window, { scene, camera, rig, post, renderer, target, trains, step })
+}

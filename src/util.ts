@@ -406,6 +406,8 @@ export function bake(root: THREE.Object3D) {
 export const tick: ((dt: number, time: number) => void)[] = []
 /** World-space chimney tops that should puff smoke. */
 export const chimneys: THREE.Vector3[] = []
+/** World-space open fires: smoke and embers. */
+export const fires: THREE.Vector3[] = []
 
 /** Collapse an animated part into one mesh per material, then flag it as dynamic. */
 export function frozen<T extends THREE.Object3D>(o: T): T {

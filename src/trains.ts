@@ -1,73 +1,15 @@
 import * as THREE from 'three'
 import { CROSSING, RAIL_Y, Track, trackA, trackB } from './tracks.ts'
-import { at, bake, blob, lumpy, box, cyl, dyn, grp, mat, mod, paint, rand, rr, sph } from './util.ts'
+import { at, bake, blob, box, cyl, dyn, grp, mat, mod, paint, rand, rr, sph } from './util.ts'
 import { CRANK, MAIN_ROD, boxCar, caboose, coach, flickerFire, locomotive, logCar, tankCar, tender } from './rollingstock.ts'
 import type { Car } from './rollingstock.ts'
-
-// ---------- smoke ----------
-
-interface Puff {
-  pos: THREE.Vector3
-  vel: THREE.Vector3
-  age: number
-  life: number
-  size: number
-  /** 1 is clean white steam; lower is sootier */
-  shade: number
-}
-
-export class Smoke {
-  readonly mesh: THREE.InstancedMesh
-  private puffs: Puff[] = []
-  private dummy = new THREE.Object3D()
-  private tint = new THREE.Color()
-  private max: number
-
-  constructor(max = 420) {
-    this.max = max
-    const g = lumpy(3, 0.16, 77)
-    const m = new THREE.MeshStandardMaterial({ color: 0xece7e0, roughness: 1, envMapIntensity: 0.3 })
-    this.mesh = new THREE.InstancedMesh(g, m, max)
-    this.mesh.count = 0
-    this.mesh.frustumCulled = false
-    this.mesh.castShadow = true
-    this.mesh.userData.dynamic = true
-  }
-
-  emit(pos: THREE.Vector3, vel: THREE.Vector3, size: number, life = 2.4, shade = 1) {
-    if (this.puffs.length >= this.max) this.puffs.shift()
-    this.puffs.push({ pos: pos.clone(), vel: vel.clone(), age: 0, life: life * rr(0.8, 1.2), size: size * rr(0.75, 1.25), shade })
-  }
-
-  update(dt: number) {
-    this.puffs = this.puffs.filter((p) => (p.age += dt) < p.life)
-    this.puffs.forEach((p, i) => {
-      p.vel.multiplyScalar(1 - 0.9 * dt)
-      p.vel.y += 0.9 * dt
-      p.vel.x += 0.35 * dt
-      p.pos.addScaledVector(p.vel, dt)
-      const u = p.age / p.life
-      const grow = 1 - Math.pow(1 - Math.min(1, u / 0.35), 3)
-      const fade = u > 0.55 ? 1 - ((u - 0.55) / 0.45) ** 2 : 1
-      const s = p.size * (0.35 + 0.65 * grow) * fade * (1 + u * 0.9)
-      this.dummy.position.copy(p.pos)
-      this.dummy.scale.setScalar(Math.max(0.0001, s))
-      this.dummy.rotation.set(u * 2 + i, u * 1.3, i * 1.7)
-      this.dummy.updateMatrix()
-      this.mesh.setMatrixAt(i, this.dummy.matrix)
-      // soot thins out as the puff rises
-      this.mesh.setColorAt(i, this.tint.setScalar(Math.min(1, p.shade + (1 - p.shade) * u * 1.4)))
-    })
-    this.mesh.count = this.puffs.length
-    this.mesh.instanceMatrix.needsUpdate = true
-    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true
-  }
-}
+import { Smoke } from './smoke.ts'
 
 // ---------- train ----------
 
 const COUPLING = 0.32
 const ACCEL = 2.4
+const BEAT = (Math.PI * 2 * 0.42) / 4
 const pf = new THREE.Vector3()
 const pb = new THREE.Vector3()
 
@@ -80,6 +22,7 @@ export class Train {
   v = 0
   vmax: number
   private puffTimer = 0
+  private beat = 0
   private cockTimer = 0
   private stoveTimer = 0
   private whistleT = 0
@@ -127,21 +70,28 @@ export class Train {
     this.s = mod(this.s + this.v * dt, this.track.length)
     this.place(time)
 
-    // chuff: puffs come faster when moving
-    this.puffTimer -= dt
-    if (this.puffTimer <= 0) {
-      const moving = this.v > 0.3
-      this.puffTimer = moving ? 0.16 + 0.3 / (1 + this.v) : 0.7
-      const loco = this.cars[0].g
-      this.chimney.copy(this.cars[0].stack!)
-      loco.localToWorld(this.chimney)
-      // working hard from a stand throws darker smoke
-      const shade = pulling && this.v < this.vmax * 0.7 ? 0.62 : 0.94
-      for (let k = 0; k < (moving ? 2 : 1); k++) {
-        this.chimney.x += rr(-0.12, 0.12)
-        this.chimney.z += rr(-0.12, 0.12)
-        smoke.emit(this.chimney, new THREE.Vector3(rr(-0.5, 0.5), rr(1.8, 3.2), rr(-0.5, 0.5)), (moving ? 0.5 : 0.34) * rr(0.6, 1.25), moving ? 2.6 : 3.0, shade)
+    // exhaust beats: four to every turn of the driving wheels, so the rhythm follows the speed
+    const moving = this.v > 0.3
+    const stack = () => this.cars[0].g.localToWorld(this.chimney.copy(this.cars[0].stack!))
+    // working hard from a stand throws darker smoke
+    const shade = pulling && this.v < this.vmax * 0.7 ? 0.38 : 0.86
+    if (moving) {
+      this.beat += this.v * dt
+      while (this.beat > BEAT) {
+        this.beat -= BEAT
+        stack()
+        for (let k = 0; k < 3; k++) {
+          this.tmp.copy(this.chimney).add(this.dir.set(rr(-0.1, 0.1), rr(0, 0.25), rr(-0.1, 0.1)))
+          smoke.emit(this.tmp, this.dir.set(rr(-0.4, 0.4), rr(2.8, 4.6), rr(-0.4, 0.4)), rr(0.5, 0.8), 2.5, shade + rr(-0.08, 0.08))
+        }
+        // a few cinders when the fire is being worked
+        if (pulling && Math.random() < 0.5) smoke.spark(this.chimney, this.dir.set(rr(-0.6, 0.6), rr(2.2, 4), rr(-0.6, 0.6)), 1.0)
       }
+    } else if ((this.puffTimer -= dt) <= 0) {
+      // standing: a lazy breath from the stack
+      this.puffTimer = 0.3
+      stack()
+      smoke.emit(this.chimney, this.dir.set(rr(-0.15, 0.15), rr(1.0, 1.6), rr(-0.15, 0.15)), rr(0.45, 0.6), 3.4, 0.8)
     }
 
     const loco = this.cars[0]
@@ -151,7 +101,7 @@ export class Train {
       for (const c of loco.cocks) {
         loco.g.localToWorld(this.tmp.copy(c))
         this.dir.set(Math.sign(c.x), -0.12, 0.25).transformDirection(loco.g.matrixWorld)
-        smoke.emit(this.tmp, this.dir.multiplyScalar(rr(1.6, 2.6)), 0.17, 0.75)
+        smoke.emit(this.tmp, this.dir.multiplyScalar(rr(1.6, 2.6)), 0.22, 0.8, 1, 'steam')
       }
     }
     // whistle
@@ -160,7 +110,7 @@ export class Train {
       if ((this.jet -= dt) <= 0) {
         this.jet = 0.04
         loco.g.localToWorld(this.tmp.copy(loco.whistle))
-        smoke.emit(this.tmp, this.dir.set(rr(-0.4, 0.4), rr(3.6, 5), rr(-0.4, 0.4)), 0.15, 0.55)
+        smoke.emit(this.tmp, this.dir.set(rr(-0.4, 0.4), rr(3.6, 5), rr(-0.4, 0.4)), 0.2, 0.7, 1, 'steam')
       }
     }
     // a wisp from the caboose stove
@@ -169,7 +119,7 @@ export class Train {
       for (const car of this.cars) {
         if (!car.stove) continue
         car.g.localToWorld(this.tmp.copy(car.stove))
-        smoke.emit(this.tmp, this.dir.set(rr(-0.1, 0.1), rr(0.7, 1.1), rr(-0.1, 0.1)), 0.13, 1.8, 0.8)
+        smoke.emit(this.tmp, this.dir.set(rr(-0.1, 0.1), rr(0.7, 1.1), rr(-0.1, 0.1)), 0.2, 2.2, 0.8, 'wisp')
       }
     }
   }
@@ -285,7 +235,7 @@ function crossbuck(root: THREE.Group, x: number, z: number, ry: number) {
 
 export function buildTrains(root: THREE.Group) {
   const smoke = new Smoke()
-  root.add(smoke.mesh)
+  root.add(smoke.mesh, smoke.sparks)
 
   const red = paint(0xd9372c)
   const navy = paint(0x2c4a7c)
@@ -369,7 +319,7 @@ export function buildTrains(root: THREE.Group) {
       }
       a.update(dt, Math.min(approach(a), station(dt)), smoke, time)
       b.update(dt, approach(b), smoke, time)
-      smoke.update(dt)
+      smoke.update(dt, time)
       flickerFire(time)
 
       const bHeld = owner === a || (owner !== b && !bMayGo())

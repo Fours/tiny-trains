@@ -184,6 +184,19 @@ class TiltShiftPass extends Pass {
   }
 }
 
+/** Runs a callback at a fixed point in the pass chain. */
+class HookPass extends Pass {
+  private fn: () => void
+  constructor(fn: () => void) {
+    super()
+    this.fn = fn
+    this.needsSwap = false
+  }
+  render() {
+    this.fn()
+  }
+}
+
 export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
   const size = renderer.getDrawingBufferSize(new THREE.Vector2())
   const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType })
@@ -191,11 +204,15 @@ export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
 
   composer.addPass(new MsaaScenePass(scene, camera))
 
+  // translucent things (smoke, embers) must not land in the AO pass's depth and normal buffers
+  const excludeFromAO: THREE.Object3D[] = []
+  composer.addPass(new HookPass(() => excludeFromAO.forEach((o) => (o.visible = false))))
   const gtao = new GTAOPass(scene, camera, size.x, size.y)
   gtao.updateGtaoMaterial({ radius: 1.1, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 10 })
   gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 8, rings: 2, samples: 8 })
   gtao.blendIntensity = 0.95
   composer.addPass(gtao)
+  composer.addPass(new HookPass(() => excludeFromAO.forEach((o) => (o.visible = true))))
 
   const bokeh = new TiltShiftPass(gtao.depthTexture, camera, { dead: 11, range: 50, radius: 22 })
   composer.addPass(bokeh)
@@ -210,6 +227,7 @@ export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
 
   return {
     composer,
+    excludeFromAO,
     gtao,
     bokeh,
     bloom,

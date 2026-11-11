@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { CROSSING, block, rect, sweep, trackA } from './tracks.ts'
 import { groundY } from './nature.ts'
-import { at, bake, blob, box, canvasTexture, chimneys, cone, cyl, dyn, grp, mat, mesh, paint, prism, rand, rr, sph, tex, tick, TAU } from './util.ts'
+import { at, bake, blob, box, canvasTexture, chimneys, cone, fires, cyl, dyn, grp, mat, mesh, paint, prism, rand, rr, sph, tex, tick, TAU } from './util.ts'
 import { groundPatch, groundPath } from './world.ts'
 
 // ---------- shared materials ----------
@@ -462,6 +462,7 @@ function campfire() {
     light.intensity = 12 * f
   })
   g.add(flame)
+  g.userData.fire = new THREE.Vector3(0, 0.65, 0)
   return g
 }
 
@@ -500,6 +501,7 @@ function place(root: THREE.Group, g: THREE.Object3D, x: number, z: number, ry = 
   if (r > 0) block(x, z, r)
   g.updateMatrixWorld(true)
   for (const c of (g.userData.chimneys ?? []) as THREE.Vector3[]) chimneys.push(g.localToWorld(c.clone()))
+  if (g.userData.fire) fires.push(g.localToWorld((g.userData.fire as THREE.Vector3).clone()))
   return g
 }
 
